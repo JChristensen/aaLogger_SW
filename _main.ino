@@ -4,20 +4,22 @@
 #include <avr/wdt.h>
 #include <Button.h>           //http://github.com/JChristensen/Button
 //#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
+#include <EE32K.h>            //http://github.com/JChristensen/EE32K
+#include "logData.h"          //part of this project
 #include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
 #include <OneWire.h>          //http://www.pjrc.com/teensy/td_libs_OneWire.html
 #include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
-#include <Time.h>
+#include <Time.h>             //http://playground.arduino.cc/Code/Time
 #include <Timezone.h>         //http://github.com/JChristensen/Timezone
-#include <Wire.h>
-#include "logData.h"
-#include <EE32K.h>
+#include <Wire.h>             //http://arduino.cc/en/Reference/Wire
 
 #define DEBUG_MODE 0
 #define RTC_TYPE MCP79412
 
 #define LOG_INTERVAL 1                //logging interval in minutes, must be >= 1 and <= 60
-#define BAUD_RATE 57600
+#define BAUD_RATE 57600               //speed for serial interface, must be <= 57600 with 8MHz system clock
+
+//MCU pin assignments
 #define RED_LED 6
 #define GRN_LED 7
 #define SPARE_LED 8
@@ -28,14 +30,18 @@
 #define PERIP_POWER A1                //RTC and EEPROM power is supplied from this pin
 #define START_BUTTON A2
 #define DWNLD_BUTTON A3
-#define CLOCK_8MHZ 0                  //CLKPS[3:0] value for divide by 1
-#define CLOCK_1MHZ 3                  //CLKPS[3:0] value for divide by 8
+
+//switch & LED timing
 #define DEBOUNCE_MS 25                //tact button debounce, milliseconds
 #define LONG_PRESS 2000               //ms for a long button press
 #define BLIP_ON 100                   //ms to blip LED on
 #define BLIP_OFF 900                  //ms to blip LED off
 #define ALT_LED 250                   //ms to alternate LEDs
-#define COMMAND_TIMEOUT 30            //go to POWER_DOWN mode after this many seconds in COMMAND mode
+#define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode
+
+//MCU system clock prescaler values
+#define CLOCK_8MHZ 0                  //CLKPS[3:0] value for divide by 1
+#define CLOCK_1MHZ 3                  //CLKPS[3:0] value for divide by 8
 
 Button btnStart(START_BUTTON, true, true, DEBOUNCE_MS);
 Button btnDownload(DWNLD_BUTTON, true, true, DEBOUNCE_MS);
@@ -44,8 +50,10 @@ TimeChangeRule mySTD = {"EST", First, Sun, Nov, 2, -300};     //Standard time = 
 Timezone myTZ(myDST, mySTD);
 TimeChangeRule *tcr;                  //pointer to the time change rule, use to get TZ abbrev
 
+//global variables
 int vccBattery, vccRegulator;         //battery and regulator voltages
 
+//states for the state machine
 enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN, DOWNLOAD, SET_TIME} STATE;
 
 #if RTC_TYPE == MCP79412
@@ -101,13 +109,13 @@ void loop(void)
     time_t rtcTime, utc, local;
     static boolean redLedState, grnLedState;
     static unsigned long ms, msLast;
-    static unsigned long msCommandStart;    //the time we entered COMMAND state
+    static unsigned long msStateTime;        //time spent in a particular state
     
     ms = millis();
     switch (STATE)
     {
         case ENTER_COMMAND:
-            msCommandStart = ms;        //record the time command mode started
+            msStateTime = ms;                //record the time command mode started
             digitalWrite(GRN_LED, LOW);
             STATE = COMMAND;
             break;
@@ -121,6 +129,7 @@ void loop(void)
                 digitalWrite(GRN_LED, grnLedState = HIGH);
                 Serial << F("SET_TIME") << endl;
                 while (btnDownload.isPressed()) btnDownload.read();
+                msStateTime = ms;
             }
             else if (btnStart.pressedFor(LONG_PRESS))
                 STATE = INITIALIZE;
@@ -176,7 +185,7 @@ void loop(void)
                 EIMSK = _BV(INT1);                //enable INT1
                 gotoSleep(false);                 //go to sleep, shut the regulator down
             }
-            else if (ms - msCommandStart >= COMMAND_TIMEOUT * 1000UL){
+            else if (ms - msStateTime >= STATE_TIMEOUT * 1000UL){
                 STATE = POWER_DOWN;
             }
             
@@ -245,6 +254,10 @@ void loop(void)
                 printDateTime(local, "UTC");
                 STATE = ENTER_COMMAND;
             }
+            else if (ms - msStateTime >= STATE_TIMEOUT * 1000UL){
+                STATE = POWER_DOWN;
+            }
+
             //run the LED
             if ((grnLedState && ms - msLast > BLIP_ON) || (!redLedState && ms - msLast > BLIP_OFF)) {
                 msLast = ms;
@@ -264,11 +277,11 @@ void readAndLogData(void)
     
     digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
     rtcTime = RTC.get();
-#if RTC_TYPE == MCP79412
+    #if RTC_TYPE == MCP79412
     rtcTemp = 0;
-#else
+    #else
     rtcTemp = RTC.temperature() * 9 / 2 + 320;
-#endif
+    #endif
     validTemp = readDS18B20(&tF10);
     printTime(rtcTime); printDate(rtcTime);
     if (validTemp) Serial << ", " << tF10 / 10 << '.' << tF10 % 10 << " F";
@@ -293,7 +306,7 @@ void readAndLogData(void)
     #if DEBUG_MODE == 1
     Serial << F("Next alarm=") << _DEC(alarmMin) << endl;
     #endif
-#if RTC_TYPE == MCP79412
+    #if RTC_TYPE == MCP79412
     breakTime(rtcTime, tm);
     tm.Minute = alarmMin;
     tm.Second = 0;
@@ -304,15 +317,15 @@ void readAndLogData(void)
     #if DEBUG_MODE == 1
     dumpRTC();
     #endif
-#else
+    #else
     RTC.setAlarm( ALM2_MATCH_MINUTES, alarmMin, 0, 0);
     #if DEBUG_MODE == 1
     dumpRtcRegisters();
     #endif
     RTC.alarm(ALARM_2);               //clear RTC interrupt flag
-#endif
+    #endif
 
-    { //for testing only
+    { //blip green LED after logging (for testing only)
     digitalWrite(GRN_LED, HIGH);
     delay(100);
     digitalWrite(GRN_LED, LOW);

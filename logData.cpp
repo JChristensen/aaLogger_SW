@@ -1,9 +1,9 @@
 //logData.cpp - A class to define the log data structure and
 //provide methods for managing it.
 
+#include "logData.h"
 #include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
 #include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
-#include "logData.h"
 
 /*----------------------------------------------------------------------*
  * Instantiate the logData object below. The constructor specifies the  *

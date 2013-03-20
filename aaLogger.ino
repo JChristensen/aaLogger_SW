@@ -27,14 +27,5 @@
  * San Francisco, California, 94105, USA.                               *
  *----------------------------------------------------------------------*/
  
- //to set time http://www.epochconverter.com/
- 
- //to do
- // xx check current draw
- // xx include timezone lib to output data in local tz
- //complete and push EE32K library
- // xx download LED blinks
- //look at dup code first logging and subsequent
- // xx green led blips for set time
- 
- //
+//to set time (use UTC) http://www.epochconverter.com/
+
