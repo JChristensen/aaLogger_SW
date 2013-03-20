@@ -29,3 +29,5 @@
  
 //to set time (use UTC) http://www.epochconverter.com/
 
+//to do:
+//Blink LED when logging for the first n records.

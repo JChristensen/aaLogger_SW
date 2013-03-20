@@ -213,7 +213,7 @@ void loop(void)
             break;
             
         case LOGGING:
-            readAndLogData();
+            logSensorData();
             break;
             
         case POWER_DOWN:
@@ -267,7 +267,8 @@ void loop(void)
     }
 }
 
-void readAndLogData(void)
+//read the sensors and log the data
+void logSensorData(void)
 {
     time_t rtcTime;
     uint8_t curMin, alarmMin;

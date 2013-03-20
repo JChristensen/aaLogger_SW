@@ -8,13 +8,12 @@
 /*----------------------------------------------------------------------*
  * Instantiate the logData object below. The constructor specifies the  *
  * total EEPROM size (all devices combined) in kB, and whether wrap     *
- * mode is enabled (oldest log record is overwritten when EEPROM        *
- * is full).                                                            *
+ * mode is enabled (wrap mode causes the oldest log record to be        *
+ * overwritten when EEPROM memory is full).                             *
  *                                                                      *
  * IMPORTANT! Whenever the EEPROM size or wrap mode is changed,         *
  * do not start logging until an INITIALIZE has been done.              *
  *----------------------------------------------------------------------*/
-
 logData LOGDATA = logData(32 * 1024UL, false);
 //logData LOGDATA = logData(64UL, false);
 
@@ -28,6 +27,7 @@ logData::logData(unsigned long eepromSize, boolean wrapWhenFull)
     _wrapWhenFull = wrapWhenFull;
 }
 
+//reset EEPROM status to empty
 void logData::initialize(void)
 {
     _nextRecord = 0;
@@ -93,6 +93,7 @@ boolean logData::write(void)
 }
 
 //send the logged data to the serial monitor in CSV format.
+//pass a pointer to a local time zone object to allow timestamps to be output in local time.
 void logData::download(Timezone *tz)
 {
     unsigned long ms, msLast;
