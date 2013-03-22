@@ -99,7 +99,7 @@ void setup(void)
     localTime = myTZ.toLocal(rtcTime, &tcr);
     Serial << endl << F("Double-A DataLogger") << endl;
     printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
-    LOGDATA.readLogStatus(true);
+    LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
 }
 
@@ -141,6 +141,10 @@ void loop(void)
                     STATE = ENTER_COMMAND;
                     break;
                 }
+                else if (LOGDATA.configChanged(false)) {
+                    STATE = ENTER_COMMAND;
+                    break;
+                }
                 STATE = LOGGING;
                 Serial << F("LOGGING") << endl;
                 digitalWrite(RED_LED, LOW);
@@ -159,6 +163,7 @@ void loop(void)
                 Serial << F("First alarm=") << _DEC(alarmMin) << endl;
                 #endif
             
+                //set the alarm
                 #if RTC_TYPE == MCP79412
                 breakTime(rtcTime, tm);
                 tm.Minute = alarmMin;
@@ -267,7 +272,7 @@ void loop(void)
     }
 }
 
-//read the sensors and log the data
+//read the sensors, log the data, then sleep
 void logSensorData(void)
 {
     time_t rtcTime;
@@ -307,6 +312,8 @@ void logSensorData(void)
     #if DEBUG_MODE == 1
     Serial << F("Next alarm=") << _DEC(alarmMin) << endl;
     #endif
+    
+    //set the alarm
     #if RTC_TYPE == MCP79412
     breakTime(rtcTime, tm);
     tm.Minute = alarmMin;

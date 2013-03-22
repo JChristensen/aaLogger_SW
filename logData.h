@@ -50,6 +50,7 @@ class logData
         boolean write(void);
         void download(Timezone *tz);
         boolean readLogStatus(boolean printStatus);
+        boolean configChanged(boolean printStatus);
 
         union {
             logData_t fields;
@@ -59,23 +60,26 @@ class logData
     private:
         boolean readFirst(void);
         boolean readNext(void);
-        void writeLogStatus(void);
+        void writeLogStatus(boolean writeConfig);
         void print8601(time_t t);
         void printI00(int val, char delim);
-        unsigned long _eepromSize;        //EEPROM capacity in bytes
-        unsigned long _nextRecord;        //EEPROM address where the next log data record will be written
-        unsigned long _readRecord;        //for reading/downloading
+        unsigned long _eepromSize;        //EEPROM capacity in bytes (total for all EEPROM devices combined)
+        static const byte _logRecSize = sizeof(logData_t);
         boolean _wrapWhenFull;            //true: logging continues when EEPROM is full, next record replacing the oldest
                                           //false: logging stops at the top EEPROM memory address
-        static const byte _logRecSize = sizeof(logData_t);
+        unsigned long _nextRecord;        //EEPROM address where the next log data record will be written
         boolean _eepromFull;
+        unsigned long _readRecord;        //for reading/downloading
     
-        union {
+        union {                           //logging status data persisted in RTC SRAM (battery-backed)
             struct {
-                unsigned long next;
-                boolean full;
+                unsigned long eepromSize; //copy of _eepromSize
+                byte recSize;             //copy of _logRecSize
+                boolean wrap;             //copy of _wrapWhenFull
+                unsigned long next;       //copy of _nextRecord
+                boolean full;             //copy of _eepromFull
             };
-            byte bytes[5];
+            byte bytes[11];
         } logStatus;
     
 };

@@ -14,7 +14,7 @@
  * IMPORTANT! Whenever the EEPROM size or wrap mode is changed,         *
  * do not start logging until an INITIALIZE has been done.              *
  *----------------------------------------------------------------------*/
-logData LOGDATA = logData(32 * 1024UL, false);
+logData LOGDATA = logData ( 32 * 1024UL, false );
 //logData LOGDATA = logData(64UL, false);
 
 #define RED_LED 6            //duplicated from main module
@@ -32,7 +32,7 @@ void logData::initialize(void)
 {
     _nextRecord = 0;
     _eepromFull = false;
-    writeLogStatus();
+    writeLogStatus(true);    //include log config parameters
 }
 
 //read the first log record.
@@ -84,11 +84,11 @@ boolean logData::write(void)
         _eepromFull = true;              //yes, next record goes to addr 0
         _nextRecord = 0;
         if (!_wrapWhenFull) {            //but is wrap mode off?
-            writeLogStatus();
+            writeLogStatus(false);       //save just the current pointer and eeprom-full status
             return false;                //yes, tell the caller
         }
     }
-    writeLogStatus();
+    writeLogStatus(false);
     return true;
 }
 
@@ -124,16 +124,21 @@ void logData::download(Timezone *tz)
     else {
         Serial << F("No data has been logged.") << endl;
     }
-    
 }
 
-//write the log status (pointer to next record, etc.) to the RTC's SRAM
-void logData::writeLogStatus(void)
+//write the log status (pointer to next record, etc.) to the RTC's SRAM.
+//optionally include the EEPROM and log config parameters (for initialization only)
+void logData::writeLogStatus(boolean writeConfig)
 {
     #if DEBUG_MODE == 1
     Serial << F("Write: next rec ") << _nextRecord << F(" full ") << _eepromFull << endl;
     #endif
-    logStatus.next = _nextRecord;
+    if (writeConfig) {                         //include configuration parameters
+        logStatus.eepromSize = _eepromSize;
+        logStatus.recSize = _logRecSize;
+        logStatus.wrap = _wrapWhenFull;
+    }
+    logStatus.next = _nextRecord;              //current status
     logStatus.full = _eepromFull;
     RTC.sramWrite(0, logStatus.bytes, sizeof(logStatus));
 }
@@ -142,6 +147,9 @@ void logData::writeLogStatus(void)
 //if not in wrap mode and eeprom is full, returns false, else true.
 boolean logData::readLogStatus(boolean printStatus)
 {
+    unsigned long recordsLogged;
+    unsigned long pctAvail;
+    
     RTC.sramRead(0, logStatus.bytes, sizeof(logStatus));
     _nextRecord = logStatus.next;
     _eepromFull = logStatus.full;
@@ -149,16 +157,32 @@ boolean logData::readLogStatus(boolean printStatus)
     Serial << F("Read: next rec ") << _nextRecord << F(" full ") << _eepromFull << endl;
     #endif
     if (printStatus) {
-        Serial << F("Records in EEPROM: ");
-        if (_eepromFull)
-            Serial << _DEC(_eepromSize/_logRecSize) << F(" (FULL)") << endl;
-        else
-            Serial << _DEC(_nextRecord/_logRecSize) << endl;
+        recordsLogged = _eepromFull ? _eepromSize / _logRecSize : _nextRecord/_logRecSize;
+        pctAvail = (recordsLogged * 10000UL) / (_eepromSize / _logRecSize);
+        pctAvail = (10000UL - pctAvail + 5 ) / 10;
+        Serial << _DEC(_eepromSize >> 10) << F("kB EEPROM, ");
+        Serial << _DEC(pctAvail / 10) << '.' << (pctAvail % 10) << F("% available.") << endl;
+        Serial << _DEC(recordsLogged) << F(" Record") << (recordsLogged==1 ? "" : "s");
+        Serial << F(" logged, Record size ") << _DEC(_logRecSize) << F(" bytes, ");
+        if (!_wrapWhenFull) Serial << F("NO-");
+        Serial << F("WRAP mode.") << endl;
     }
     if (_eepromFull && !_wrapWhenFull)
         return false;
     else
         return true;
+}
+
+//check the current configuration against that read from RTC SRAM, return true if different.
+boolean logData::configChanged(boolean printStatus)
+{
+    readLogStatus(printStatus);
+    if ( logStatus.eepromSize != _eepromSize || logStatus.recSize != _logRecSize || logStatus.wrap != _wrapWhenFull) {
+        Serial << F("Configuration changed, INITIALIZE required.") << endl;
+        return true;
+    }
+    else
+        return false;
 }
 
 //print a timestamp to serial in ISO8601 format, followed by a comma
