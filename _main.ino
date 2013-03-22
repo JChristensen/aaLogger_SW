@@ -31,13 +31,15 @@
 #define START_BUTTON A2
 #define DWNLD_BUTTON A3
 
-//switch & LED timing
+//state, switch & LED timing
+#define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode
 #define DEBOUNCE_MS 25                //tact button debounce, milliseconds
 #define LONG_PRESS 2000               //ms for a long button press
 #define BLIP_ON 100                   //ms to blip LED on
 #define BLIP_OFF 900                  //ms to blip LED off
 #define ALT_LED 250                   //ms to alternate LEDs
-#define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode
+#define LOG_BLINK 500                 //ms to blink LED when record is logged
+#define N_LOG_BLINK 5                 //blink the LED for this many records after logging starts
 
 //MCU system clock prescaler values
 #define CLOCK_8MHZ 0                  //CLKPS[3:0] value for divide by 1
@@ -52,6 +54,7 @@ TimeChangeRule *tcr;                  //pointer to the time change rule, use to 
 
 //global variables
 int vccBattery, vccRegulator;         //battery and regulator voltages
+byte nLogBlink;                       //counter for blinking LED when logging a record
 
 //states for the state machine
 enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN, DOWNLOAD, SET_TIME} STATE;
@@ -146,6 +149,7 @@ void loop(void)
                     break;
                 }
                 STATE = LOGGING;
+                nLogBlink = N_LOG_BLINK;
                 Serial << F("LOGGING") << endl;
                 digitalWrite(RED_LED, LOW);
                 for (uint8_t i=0; i<3; i++) {     //blink the LED to acknowledge
@@ -333,10 +337,12 @@ void logSensorData(void)
     RTC.alarm(ALARM_2);               //clear RTC interrupt flag
     #endif
 
-    { //blip green LED after logging (for testing only)
-    digitalWrite(GRN_LED, HIGH);
-    delay(100);
-    digitalWrite(GRN_LED, LOW);
+    //blink LED to indicate record logged
+    if (nLogBlink) {
+        --nLogBlink;
+        digitalWrite(GRN_LED, HIGH);
+        delay(LOG_BLINK);
+        digitalWrite(GRN_LED, LOW);
     }
     
     gotoSleep(false);                 //go back to sleep, shut the regulator down

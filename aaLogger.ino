@@ -20,6 +20,7 @@
  * at low voltages when the boost regulator is disabled. Clock is       *
  * changed to 8MHz when the regulator is enabled.                       *
  *                                                                      *
+ * CC BY-SA                                                             *
  * This work is licensed under the Creative Commons Attribution-        *
  * ShareAlike 3.0 Unported License. To view a copy of this license,     *
  * visit http://creativecommons.org/licenses/by-sa/3.0/ or send a       *
