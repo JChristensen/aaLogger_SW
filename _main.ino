@@ -4,7 +4,7 @@
 #include <avr/wdt.h>
 #include <Button.h>           //http://github.com/JChristensen/Button
 //#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
-#include <EE32K.h>            //http://github.com/JChristensen/EE32K
+#include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
 #include "logData.h"          //part of this project
 #include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
 #include <OneWire.h>          //http://www.pjrc.com/teensy/td_libs_OneWire.html

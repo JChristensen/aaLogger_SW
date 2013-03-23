@@ -9,7 +9,7 @@
 #include <WProgram.h> 
 #endif
 
-#include <EE32K.h>            //http://github.com/JChristensen/EE32K
+#include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
 #include <Time.h>             //http://playground.arduino.cc/Code/Time
 #include <Timezone.h>         //http://github.com/JChristensen/Timezone
 

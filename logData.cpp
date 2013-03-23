@@ -5,6 +5,10 @@
 #include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
 #include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
 
+#define RED_LED 6            //duplicated from main module
+#define GRN_LED 7
+#define BLIP_ON 100
+
 /*----------------------------------------------------------------------*
  * Instantiate the logData object below. The constructor specifies the  *
  * total EEPROM size (all devices combined) in kB, and whether wrap     *
@@ -15,11 +19,8 @@
  * do not start logging until an INITIALIZE has been done.              *
  *----------------------------------------------------------------------*/
 logData LOGDATA = logData ( 32 * 1024UL, false );
-//logData LOGDATA = logData(64UL, false);
 
-#define RED_LED 6            //duplicated from main module
-#define GRN_LED 7
-#define BLIP_ON 100
+extEEPROM EEEP = extEEPROM(32);   //instantiate an External EEProm object
 
 logData::logData(unsigned long eepromSize, boolean wrapWhenFull)
 {
@@ -97,12 +98,14 @@ boolean logData::write(void)
 void logData::download(Timezone *tz)
 {
     unsigned long ms, msLast;
+    unsigned long nRec = 0;
     boolean ledState;
     TimeChangeRule *tcr;                  //pointer to the time change rule, use to get TZ abbrev
     
     if (readFirst()) {
         Serial << F("utc,local,tz,sensorTemp,rtcTemp,batteryVoltage,regulatorVoltage") << endl;
         do {
+            ++nRec;
             print8601(LOGDATA.fields.timestamp);
             print8601((*tz).toLocal(LOGDATA.fields.timestamp, &tcr));
             Serial << tcr -> abbrev << ',';
@@ -120,6 +123,7 @@ void logData::download(Timezone *tz)
         } while (readNext());
         digitalWrite(RED_LED, LOW);
         digitalWrite(GRN_LED, LOW);
+        Serial << F("*EOF ") << _DEC(nRec) << F(" Records.") << endl;
     }
     else {
         Serial << F("No data has been logged.") << endl;
