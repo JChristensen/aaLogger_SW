@@ -2,12 +2,6 @@
 //provide methods for managing it.
 
 #include "logData.h"
-#include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
-#include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
-
-#define RED_LED 6            //duplicated from main module
-#define GRN_LED 7
-#define BLIP_ON 100
 
 /*----------------------------------------------------------------------*
  * Instantiate the logData object below. The constructor specifies the  *
@@ -144,7 +138,11 @@ void logData::writeLogStatus(boolean writeConfig)
     }
     logStatus.next = _nextRecord;              //current status
     logStatus.full = _eepromFull;
-    RTC.sramWrite(0, logStatus.bytes, sizeof(logStatus));
+    #if RTC_TYPE == 79412
+    RTC.sramWrite(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
+    #else
+    RTC.writeRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
+    #endif
 }
 
 //read and optionally print the log status (pointer to next record, etc.) from the RTC's SRAM.
@@ -154,7 +152,11 @@ boolean logData::readLogStatus(boolean printStatus)
     unsigned long recordsLogged;
     unsigned long pctAvail;
     
-    RTC.sramRead(0, logStatus.bytes, sizeof(logStatus));
+    #if RTC_TYPE == 79412
+    RTC.sramRead(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
+    #else
+    RTC.readRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
+    #endif
     _nextRecord = logStatus.next;
     _eepromFull = logStatus.full;
     #if DEBUG_MODE == 1

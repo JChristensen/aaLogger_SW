@@ -9,11 +9,26 @@
 #include <WProgram.h> 
 #endif
 
+//select RTC by commenting one of the next two lines, and setting the #define accordingly.
+//make similar changes in the _main file also.
+//#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
+#include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
+#define RTC_TYPE 79412        //set to 79412 for MCP79412 or 3232 for DS3232 only.
+
 #include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
+#include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
 #include <Time.h>             //http://playground.arduino.cc/Code/Time
 #include <Timezone.h>         //http://github.com/JChristensen/Timezone
 
 #define DEBUG_MODE 0
+#define RED_LED 6             //duplicated from main module
+#define GRN_LED 7
+#define BLIP_ON 100
+#if RTC_TYPE == 79412
+#define RTC_RAM_STATUS 0x00   //address in the RTC SRAM to keep log status
+#else
+#define RTC_RAM_STATUS 0x14
+#endif
 
 /*----------------------------------------------------------------------*
  * The struct below defines the log data. The size of the struct in     *

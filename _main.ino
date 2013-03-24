@@ -3,18 +3,21 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <Button.h>           //http://github.com/JChristensen/Button
-//#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
 #include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
 #include "logData.h"          //part of this project
-#include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
 #include <OneWire.h>          //http://www.pjrc.com/teensy/td_libs_OneWire.html
 #include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
 #include <Time.h>             //http://playground.arduino.cc/Code/Time
 #include <Timezone.h>         //http://github.com/JChristensen/Timezone
 #include <Wire.h>             //http://arduino.cc/en/Reference/Wire
 
+//select RTC by commenting one of the next two lines, and setting the #define accordingly.
+//make similar changes in the logData.h file also.
+//#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
+#include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
+#define RTC_TYPE 79412        //set to 79412 for MCP79412 or 3232 for DS3232 only.
+
 #define DEBUG_MODE 0
-#define RTC_TYPE MCP79412
 
 #define LOG_INTERVAL 1                //logging interval in minutes, must be >= 1 and <= 60
 #define BAUD_RATE 57600               //speed for serial interface, must be <= 57600 with 8MHz system clock
@@ -59,7 +62,7 @@ byte nLogBlink;                       //counter for blinking LED when logging a 
 //states for the state machine
 enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN, DOWNLOAD, SET_TIME} STATE;
 
-#if RTC_TYPE == MCP79412
+#if RTC_TYPE == 79412
 tmElements_t tm;
 time_t alarmTime;
 #endif
@@ -168,7 +171,7 @@ void loop(void)
                 #endif
             
                 //set the alarm
-                #if RTC_TYPE == MCP79412
+                #if RTC_TYPE == 79412
                 breakTime(rtcTime, tm);
                 tm.Minute = alarmMin;
                 tm.Second = 0;
@@ -235,13 +238,14 @@ void loop(void)
                 delay(BLIP_ON);
             }
             Serial << F("POWER_DOWN") << endl;
-            #if RTC_TYPE == MCP79412
+            #if RTC_TYPE == 79412
             RTC.enableAlarm(ALARM_0, ALM_DISABLE);
             RTC.enableAlarm(ALARM_1, ALM_DISABLE);
-            EIMSK = 0;                //might as well also disable external interrupts to make absolutely sure
             #else
-            equivalent code for DS3232 here
+            RTC.alarmInterrupt(ALARM_1, false);
+            RTC.alarmInterrupt(ALARM_2, false);
             #endif
+            EIMSK = 0;                //might as well also disable external interrupts to make absolutely sure
             gotoSleep(false);
             STATE = ENTER_COMMAND;    //should never get here but just in case
             break;
@@ -287,7 +291,7 @@ void logSensorData(void)
     
     digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
     rtcTime = RTC.get();
-    #if RTC_TYPE == MCP79412
+    #if RTC_TYPE == 79412
     rtcTemp = 0;
     #else
     rtcTemp = RTC.temperature() * 9 / 2 + 320;
@@ -318,7 +322,7 @@ void logSensorData(void)
     #endif
     
     //set the alarm
-    #if RTC_TYPE == MCP79412
+    #if RTC_TYPE == 79412
     breakTime(rtcTime, tm);
     tm.Minute = alarmMin;
     tm.Second = 0;
@@ -394,7 +398,7 @@ void setSystemClock(uint8_t clkpr)
         vccBattery = readVcc();
         vccBattery = readVcc();
         digitalWrite(BOOST_REGULATOR, HIGH);
-        delay(1);               //really an 8ms delay because the clock is 1MHz
+        delay(3);               //really 24ms because the clock is 1MHz at this point
         vccRegulator = readVcc();
         vccRegulator = readVcc();
     }
@@ -407,7 +411,7 @@ void setSystemClock(uint8_t clkpr)
     if (clkpr == CLOCK_1MHZ) {
         ADCSRA = 0x87;
         digitalWrite(BOOST_REGULATOR, LOW);
-        delay(1);                //really an 8ms delay because the clock is 1MHz
+        delay(1);                //really 8ms because the clock is 1MHz at this point
     }
 }
 
