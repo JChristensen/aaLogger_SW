@@ -133,7 +133,7 @@ void loop(void)
                 STATE = SET_TIME;
                 digitalWrite(RED_LED, LOW);
                 digitalWrite(GRN_LED, grnLedState = HIGH);
-                Serial << F("SET_TIME") << endl;
+                Serial << endl << F("Enter Unix Epoch Time (UTC), e.g. from http://www.epochconverter.com/") << endl;
                 while (btnDownload.isPressed()) btnDownload.read();
                 msStateTime = ms;
             }
@@ -262,9 +262,9 @@ void loop(void)
                 RTC.set(utc);
                 local = myTZ.toLocal(utc, &tcr);
                 while (Serial.read() >= 0);
-                Serial << endl << "Set time: " << endl;
+                Serial << endl << F("Time set to: ") << endl;
                 printDateTime(utc, "UTC");
-                printDateTime(local, "UTC");
+                printDateTime(local, tcr -> abbrev);
                 STATE = ENTER_COMMAND;
             }
             else if (ms - msStateTime >= STATE_TIMEOUT * 1000UL){
@@ -280,7 +280,10 @@ void loop(void)
     }
 }
 
-//read the sensors, log the data, then sleep
+//read the sensors, log the data, then sleep.
+//when changing the log data structure, the code blocks below with
+//comments (1), (2) and (3) will need modification.
+//block (3) is optional and can be deleted if desired, doing so will save a little power.
 void logSensorData(void)
 {
     time_t rtcTime;
@@ -291,21 +294,31 @@ void logSensorData(void)
     
     digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
     rtcTime = RTC.get();
-    #if RTC_TYPE == 79412
-    rtcTemp = 0;
-    #else
-    rtcTemp = RTC.temperature() * 9 / 2 + 320;
-    #endif
-    validTemp = readDS18B20(&tF10);
-    printTime(rtcTime); printDate(rtcTime);
-    if (validTemp) Serial << ", " << tF10 / 10 << '.' << tF10 % 10 << " F";
-    Serial << ", RTC " << rtcTemp / 10 << '.' << rtcTemp % 10 << " F";
-    Serial << F(", Bat ") << vccBattery << F(" mV, Reg ") << vccRegulator << F(" mV") << endl;
-    LOGDATA.fields.timestamp = rtcTime;
-    LOGDATA.fields.sensorTemp = tF10;
-    LOGDATA.fields.rtcTemp = rtcTemp;
-    LOGDATA.fields.batteryVoltage = vccBattery;
-    LOGDATA.fields.regulatorVoltage = vccRegulator;
+
+    { /*---- (1) READ SENSORS ----*/
+        validTemp = readDS18B20(&tF10);
+        #if RTC_TYPE == 79412
+        rtcTemp = 0;
+        #else
+        rtcTemp = RTC.temperature() * 9 / 2 + 320;
+        #endif
+    }
+
+    { /*---- (2) SAVE SENSOR DATA ----*/
+        LOGDATA.fields.timestamp = rtcTime;
+        LOGDATA.fields.sensorTemp = tF10;
+        LOGDATA.fields.rtcTemp = rtcTemp;
+        LOGDATA.fields.batteryVoltage = vccBattery;
+        LOGDATA.fields.regulatorVoltage = vccRegulator;
+    }
+
+    { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
+        printTime(rtcTime); printDate(rtcTime);
+        if (validTemp) Serial << ", " << tF10 / 10 << '.' << tF10 % 10 << " F";
+        Serial << ", RTC " << rtcTemp / 10 << '.' << rtcTemp % 10 << " F";
+        Serial << F(", Bat ") << vccBattery << F(" mV, Reg ") << vccRegulator << F(" mV") << endl;
+    }
+
     if (!LOGDATA.write()) {
         #if DEBUG_MODE == 1
         Serial << F("EEPROM FULL") << endl;
@@ -394,12 +407,10 @@ ISR(INT1_vect)
 void setSystemClock(uint8_t clkpr)
 {
     if (clkpr == CLOCK_8MHZ) {
-        ADCSRA = 0x84;
-        vccBattery = readVcc();
+        ADCSRA = 0x84;                       //adjust the ADC prescaler for slower system clock
         vccBattery = readVcc();
         digitalWrite(BOOST_REGULATOR, HIGH);
-        delay(3);               //really 24ms because the clock is 1MHz at this point
-        vccRegulator = readVcc();
+        delay(1);                            //actually 8ms because the clock is 1MHz at this point
         vccRegulator = readVcc();
     }
 
@@ -409,9 +420,9 @@ void setSystemClock(uint8_t clkpr)
     sei();
     
     if (clkpr == CLOCK_1MHZ) {
-        ADCSRA = 0x87;
+        ADCSRA = 0x87;                       //adjust the ADC prescaler for faster system clock
         digitalWrite(BOOST_REGULATOR, LOW);
-        delay(1);                //really 8ms because the clock is 1MHz at this point
+        delay(1);                            //actually 8ms because the clock is 1MHz at this point
     }
 }
 

@@ -28,8 +28,4 @@
  * letter to Creative Commons, 171 Second Street, Suite 300,            *
  * San Francisco, California, 94105, USA.                               *
  *----------------------------------------------------------------------*/
- 
-//to set time (use UTC) http://www.epochconverter.com/
 
-//to do:
-//Blink LED when logging for the first n records.

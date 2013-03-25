@@ -89,6 +89,8 @@ boolean logData::write(void)
 
 //send the logged data to the serial monitor in CSV format.
 //pass a pointer to a local time zone object to allow timestamps to be output in local time.
+//when changing the log data structure, the code blocks below with
+//comments (1) and (2) will need modification.
 void logData::download(Timezone *tz)
 {
     unsigned long ms, msLast;
@@ -97,16 +99,20 @@ void logData::download(Timezone *tz)
     TimeChangeRule *tcr;                  //pointer to the time change rule, use to get TZ abbrev
     
     if (readFirst()) {
-        Serial << F("utc,local,tz,sensorTemp,rtcTemp,batteryVoltage,regulatorVoltage") << endl;
+        { /*---- (1) CSV HEADER ----*/
+            Serial << F("utc,local,tz,sensorTemp,rtcTemp,batteryVoltage,regulatorVoltage") << endl;
+        }
         do {
             ++nRec;
-            print8601(LOGDATA.fields.timestamp);
-            print8601((*tz).toLocal(LOGDATA.fields.timestamp, &tcr));
-            Serial << tcr -> abbrev << ',';
-            Serial << _DEC(LOGDATA.fields.sensorTemp) << ',';
-            Serial << _DEC(LOGDATA.fields.rtcTemp) << ',';
-            Serial << _DEC(LOGDATA.fields.batteryVoltage) << ',';
-            Serial << _DEC(LOGDATA.fields.regulatorVoltage) << endl;
+            { /*---- (2) CSV DATA ----*/
+                print8601(LOGDATA.fields.timestamp);
+                print8601((*tz).toLocal(LOGDATA.fields.timestamp, &tcr));
+                Serial << tcr -> abbrev << ',';
+                Serial << _DEC(LOGDATA.fields.sensorTemp) << ',';
+                Serial << _DEC(LOGDATA.fields.rtcTemp) << ',';
+                Serial << _DEC(LOGDATA.fields.batteryVoltage) << ',';
+                Serial << _DEC(LOGDATA.fields.regulatorVoltage) << endl;
+            }
             //provide the user with a small light show while downloading data
             ms = millis();
             if (ms - msLast > BLIP_ON) {
