@@ -3,19 +3,17 @@
 
 #include "logData.h"
 
-/*----------------------------------------------------------------------*
- * Instantiate the logData object below. The constructor specifies the  *
- * total EEPROM size (all devices combined) in kB, and whether wrap     *
- * mode is enabled (wrap mode causes the oldest log record to be        *
- * overwritten when EEPROM memory is full).                             *
- *                                                                      *
- * IMPORTANT! Whenever the EEPROM size or wrap mode is changed,         *
- * do not start logging until an INITIALIZE has been done.              *
- *----------------------------------------------------------------------*/
-logData LOGDATA = logData ( 32 * 1024UL, false );
+//instantiate the logData and extEEPROM objects
+logData LOGDATA = logData ( EEPROM_SIZE * 1024UL, WRAP_MODE );
+extEEPROM EEEP = extEEPROM(EEPROM_SIZE, EEPROM_PAGE);
 
-extEEPROM EEEP = extEEPROM(32);   //instantiate an External EEProm object
-
+// the constructor specifies the total EEPROM size (all devices
+// combined) in kB, and whether wrap mode is enabled (wrap mode
+//causes the oldest log record to be overwritten when EEPROM memory
+// is full).
+//
+// Whenever the EEPROM size or wrap mode is changed an INITIALIZE
+// is required before logging can begin.
 logData::logData(unsigned long eepromSize, boolean wrapWhenFull)
 {
     _eepromSize = eepromSize;
@@ -99,11 +97,14 @@ void logData::download(Timezone *tz)
     TimeChangeRule *tcr;                  //pointer to the time change rule, use to get TZ abbrev
     
     if (readFirst()) {
+
         { /*---- (1) CSV HEADER ----*/
             Serial << F("utc,local,tz,sensorTemp,rtcTemp,batteryVoltage,regulatorVoltage") << endl;
         }
+
         do {
             ++nRec;
+
             { /*---- (2) CSV DATA ----*/
                 print8601(LOGDATA.fields.timestamp);
                 print8601((*tz).toLocal(LOGDATA.fields.timestamp, &tcr));
@@ -113,8 +114,8 @@ void logData::download(Timezone *tz)
                 Serial << _DEC(LOGDATA.fields.batteryVoltage) << ',';
                 Serial << _DEC(LOGDATA.fields.regulatorVoltage) << endl;
             }
-            //provide the user with a small light show while downloading data
-            ms = millis();
+
+            ms = millis();                //flash LEDs while downloading data
             if (ms - msLast > BLIP_ON) {
                 msLast = ms;
                 digitalWrite(RED_LED, ledState = !ledState);
@@ -126,7 +127,7 @@ void logData::download(Timezone *tz)
         Serial << F("*EOF ") << _DEC(nRec) << F(" Records.") << endl;
     }
     else {
-        Serial << F("No data has been logged.") << endl;
+        Serial << F("NO DATA LOGGED") << endl;
     }
 }
 
@@ -218,5 +219,4 @@ void logData::printI00(int val, char delim)
     if (delim > 0) Serial << delim;
     return;
 }
-
 

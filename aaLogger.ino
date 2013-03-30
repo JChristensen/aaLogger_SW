@@ -6,9 +6,9 @@
  * - Runs on two AA alkaline cells.                                     *
  * - A DS3232 real-time clock provides timing for logging and battery-  *
  *   backed SRAM to persist EEPROM pointers and status through MCU      *
- *   resets and main battery changes. (An MCP79412 RTC can also         *
- *   be used.)                                                          *
- * - Data is logged to external EEPROM (2 x M24M02 for 512kB total).    *
+ *   resets and main battery changes.                                   *
+ * - Data is logged to external EEPROM (1 or 2 x M24M02 for up to       *
+ *   512kB total).                                                      *
  * - MCP1640C boost regulator provides 3.3V or 5V, but has a bypass     *
  *   mode which puts the regulator into a low-power shutdown mode and   *
  *   passes the battery voltage straight through to save power while    *

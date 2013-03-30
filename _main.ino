@@ -1,4 +1,4 @@
-//Double-A DataLogger main module
+//_main.ino - Double-A DataLogger main module
 
 #include <avr/sleep.h>
 #include <avr/wdt.h>
@@ -15,45 +15,23 @@
 //make similar changes in the logData.h file also.
 //#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
 #include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
-#define RTC_TYPE 79412        //set to 79412 for MCP79412 or 3232 for DS3232 only.
+#include "defs.h"
+#include "config.h"
 
-#define DEBUG_MODE 0
-
-#define LOG_INTERVAL 1                //logging interval in minutes, must be >= 1 and <= 60
-#define BAUD_RATE 57600               //speed for serial interface, must be <= 57600 with 8MHz system clock
-
-//MCU pin assignments
-#define RED_LED 6
-#define GRN_LED 7
-#define SPARE_LED 8
-#define DS18B20_DQ 9                  //DS18B20 data pin
-#define DS18B20_GND 10                //DS18B20 ground pin
-#define BOOST_REGULATOR 11            //high enables the regulator, low passes battery voltage through
-#define L_LED LED_BUILTIN
-#define PERIP_POWER A1                //RTC and EEPROM power is supplied from this pin
-#define START_BUTTON A2
-#define DWNLD_BUTTON A3
-
-//state, switch & LED timing
-#define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode
-#define DEBOUNCE_MS 25                //tact button debounce, milliseconds
-#define LONG_PRESS 2000               //ms for a long button press
-#define BLIP_ON 100                   //ms to blip LED on
-#define BLIP_OFF 900                  //ms to blip LED off
-#define ALT_LED 250                   //ms to alternate LEDs
-#define LOG_BLINK 500                 //ms to blink LED when record is logged
-#define N_LOG_BLINK 5                 //blink the LED for this many records after logging starts
-
-//MCU system clock prescaler values
-#define CLOCK_8MHZ 0                  //CLKPS[3:0] value for divide by 1
-#define CLOCK_1MHZ 3                  //CLKPS[3:0] value for divide by 8
+//Continental US Time Zones
+TimeChangeRule EDT = {"EDT", Second, Sun, Mar, 2, -240};    //Daylight time = UTC - 4 hours
+TimeChangeRule EST = {"EST", First, Sun, Nov, 2, -300};     //Standard time = UTC - 5 hours
+TimeChangeRule CDT = {"CDT", Second, Sun, Mar, 2, -300};    //Daylight time = UTC - 5 hours
+TimeChangeRule CST = {"CST", First, Sun, Nov, 2, -360};     //Standard time = UTC - 6 hours
+TimeChangeRule MDT = {"MDT", Second, Sun, Mar, 2, -360};    //Daylight time = UTC - 6 hours
+TimeChangeRule MST = {"MST", First, Sun, Nov, 2, -420};     //Standard time = UTC - 7 hours
+TimeChangeRule PDT = {"PDT", Second, Sun, Mar, 2, -420};    //Daylight time = UTC - 7 hours
+TimeChangeRule PST = {"PST", First, Sun, Nov, 2, -480};     //Standard time = UTC - 8 hours
+Timezone myTZ(EDT, EST);                                    //use the time change rules for your time zone (or declare new ones)
+TimeChangeRule *tcr;                  //pointer to the time change rule, use to get TZ abbrev
 
 Button btnStart(START_BUTTON, true, true, DEBOUNCE_MS);
 Button btnDownload(DWNLD_BUTTON, true, true, DEBOUNCE_MS);
-TimeChangeRule myDST = {"EDT", Second, Sun, Mar, 2, -240};    //Daylight time = UTC - 4 hours
-TimeChangeRule mySTD = {"EST", First, Sun, Nov, 2, -300};     //Standard time = UTC - 5 hours
-Timezone myTZ(myDST, mySTD);
-TimeChangeRule *tcr;                  //pointer to the time change rule, use to get TZ abbrev
 
 //global variables
 int vccBattery, vccRegulator;         //battery and regulator voltages
@@ -122,6 +100,7 @@ void loop(void)
     {
         case ENTER_COMMAND:
             msStateTime = ms;                //record the time command mode started
+            digitalWrite(RED_LED, redLedState = HIGH);
             digitalWrite(GRN_LED, LOW);
             STATE = COMMAND;
             break;
@@ -209,7 +188,7 @@ void loop(void)
             break;
         
         case INITIALIZE:
-        Serial << F("INITIALIZE") << endl;
+        Serial << F("INITIALIZED") << endl;
            for (uint8_t i=0; i<3; i++) {     //blink both LEDs to acknowledge
                 digitalWrite(RED_LED, HIGH);
                 digitalWrite(GRN_LED, HIGH);
@@ -237,7 +216,7 @@ void loop(void)
                 digitalWrite(RED_LED, LOW);
                 delay(BLIP_ON);
             }
-            Serial << F("POWER_DOWN") << endl;
+            Serial << F("POWER DOWN") << endl;
             #if RTC_TYPE == 79412
             RTC.enableAlarm(ALARM_0, ALM_DISABLE);
             RTC.enableAlarm(ALARM_1, ALM_DISABLE);
@@ -293,6 +272,7 @@ void logSensorData(void)
     boolean validTemp;
     
     digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
+    delay(1);                         //a little ramp-up time
     rtcTime = RTC.get();
 
     { /*---- (1) READ SENSORS ----*/

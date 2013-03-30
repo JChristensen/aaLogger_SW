@@ -1,0 +1,29 @@
+/*----------------------------------------------------------------------*
+ * config.h -- user-definable parameters                                *
+ * define logging interval, eeprom characteristics and the log data     *
+ * structure here.                                                      *
+ *----------------------------------------------------------------------*/
+
+#ifndef config_h
+#define config_h
+
+#define LOG_INTERVAL 1    //logging interval in minutes, must be >= 1 and <= 60
+#define EEPROM_SIZE 32    //total eeprom capacity in KILOBYTES for all eeprom devices on the i2c bus
+#define EEPROM_PAGE 64    //eeprom page size in BYTES
+#define WRAP_MODE false   //true to overwrite oldest data once eeprom is full, false to stop logging when eeprom full
+
+/*----------------------------------------------------------------------*
+ * The struct below defines the log data. When modifying the struct,    *
+ * also change the logData::download() function in logData.cpp and the  *
+ * logSensorData() function in the main module accordingly.             *
+ *----------------------------------------------------------------------*/
+struct logData_t {
+    unsigned long timestamp;
+    int sensorTemp;
+    int rtcTemp;
+    int batteryVoltage;
+    int regulatorVoltage;
+};
+
+#endif
+

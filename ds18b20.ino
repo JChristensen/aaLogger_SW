@@ -1,4 +1,4 @@
-//Functions for the DS18B20 temperature sensor.
+//ds18b20.ino - Functions for a DS18B20 temperature sensor.
 //To save a bit more power, uses the watchdog timer to sleep the
 //MCU for a second while the DS18B20 does the temperature conversion.
 

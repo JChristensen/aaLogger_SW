@@ -1,4 +1,4 @@
-//util - various utility functions
+//util.ino - various utility functions
 
 //print date and time to Serial
 void printDateTime(time_t t, char *tz)
