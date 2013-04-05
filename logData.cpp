@@ -4,19 +4,19 @@
 #include "logData.h"
 
 //instantiate the logData and extEEPROM objects
-logData LOGDATA = logData ( EEPROM_SIZE * 1024UL, WRAP_MODE );
-extEEPROM EEEP = extEEPROM(EEPROM_SIZE, EEPROM_PAGE);
+logData LOGDATA = logData ( EEPROM_SIZE, WRAP_MODE );
+extEEPROM EEEP = extEEPROM ( EEPROM_SIZE, EEPROM_PAGE );
 
 // the constructor specifies the total EEPROM size (all devices
 // combined) in kB, and whether wrap mode is enabled (wrap mode
-//causes the oldest log record to be overwritten when EEPROM memory
+// causes the oldest log record to be overwritten when EEPROM memory
 // is full).
 //
 // Whenever the EEPROM size or wrap mode is changed an INITIALIZE
 // is required before logging can begin.
 logData::logData(unsigned long eepromSize, boolean wrapWhenFull)
 {
-    _eepromSize = eepromSize;
+    _eepromSize = eepromSize * 1024UL;
     _wrapWhenFull = wrapWhenFull;
 }
 

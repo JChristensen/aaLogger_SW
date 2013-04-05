@@ -12,6 +12,7 @@
 #define RTC_RAM_STATUS 0x14
 #endif
 
+#define SOFTWARE_VERSION 1
 #define DEBUG_MODE 0
 #define BAUD_RATE 57600               //speed for serial interface, must be <= 57600 with 8MHz system clock
 

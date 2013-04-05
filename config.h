@@ -16,6 +16,11 @@
  * The struct below defines the log data. When modifying the struct,    *
  * also change the logData::download() function in logData.cpp and the  *
  * logSensorData() function in the main module accordingly.             *
+ *                                                                      *
+ * When using M24M02 EEPROMs, the size of the struct should be a        *
+ * multiple of four bytes if at all possible. This will minimize the    *
+ * number of write cycles and therefore maximize EEPROM endurance.      *
+ * Pad the struct out with a byte array, e.g. byte RFU[2]; if needed.   *
  *----------------------------------------------------------------------*/
 struct logData_t {
     unsigned long timestamp;

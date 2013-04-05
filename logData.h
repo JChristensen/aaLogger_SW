@@ -60,7 +60,6 @@ class logData
             };
             byte bytes[11];
         } logStatus;
-    
 };
 
 extern logData LOGDATA;

@@ -81,7 +81,7 @@ void setup(void)
 
     rtcTime = RTC.get();
     localTime = myTZ.toLocal(rtcTime, &tcr);
-    Serial << endl << F("Double-A DataLogger") << endl;
+    Serial << endl << F("Double-A Data Logger SW-v") << _DEC(SOFTWARE_VERSION) << endl;
     printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
     LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
@@ -132,7 +132,7 @@ void loop(void)
                 }
                 STATE = LOGGING;
                 nLogBlink = N_LOG_BLINK;
-                Serial << F("LOGGING") << endl;
+                Serial << endl << F("LOGGING") << endl;
                 digitalWrite(RED_LED, LOW);
                 for (uint8_t i=0; i<3; i++) {     //blink the LED to acknowledge
                     digitalWrite(GRN_LED, HIGH);
@@ -188,7 +188,7 @@ void loop(void)
             break;
         
         case INITIALIZE:
-        Serial << F("INITIALIZED") << endl;
+        Serial << endl << F("INITIALIZED") << endl;
            for (uint8_t i=0; i<3; i++) {     //blink both LEDs to acknowledge
                 digitalWrite(RED_LED, HIGH);
                 digitalWrite(GRN_LED, HIGH);
@@ -216,7 +216,7 @@ void loop(void)
                 digitalWrite(RED_LED, LOW);
                 delay(BLIP_ON);
             }
-            Serial << F("POWER DOWN") << endl;
+            Serial << endl << F("POWER DOWN") << endl;
             #if RTC_TYPE == 79412
             RTC.enableAlarm(ALARM_0, ALM_DISABLE);
             RTC.enableAlarm(ALARM_1, ALM_DISABLE);
