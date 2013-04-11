@@ -150,12 +150,12 @@ void logData::writeLogStatus(boolean writeConfig)
     Serial << F("Write: next rec ") << _nextRecord << F(" full ") << _eepromFull << endl;
     #endif
     if (writeConfig) {                         //include configuration parameters
-        logStatus.eepromCapacity = _eepromCapacity;
-        logStatus.recSize = _logRecSize;
-        logStatus.wrap = _wrapMode;
+        logStatus._eepromCap = _eepromCapacity;
+        logStatus._recSize = _logRecSize;
+        logStatus._wrap = _wrapMode;
     }
-    logStatus.next = _nextRecord;              //current status
-    logStatus.full = _eepromFull;
+    logStatus._next = _nextRecord;              //current status
+    logStatus._full = _eepromFull;
     #if RTC_TYPE == 79412
     RTC.sramWrite(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
     #else
@@ -175,8 +175,8 @@ boolean logData::readLogStatus(boolean printStatus)
     #else
     RTC.readRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
     #endif
-    _nextRecord = logStatus.next;
-    _eepromFull = logStatus.full;
+    _nextRecord = logStatus._next;
+    _eepromFull = logStatus._full;
     #if DEBUG_MODE == 1
     Serial << F("Read: next rec ") << _nextRecord << F(" full ") << _eepromFull << endl;
     #endif
@@ -201,7 +201,7 @@ boolean logData::readLogStatus(boolean printStatus)
 boolean logData::configChanged(boolean printStatus)
 {
     readLogStatus(printStatus);
-    if ( logStatus.eepromCapacity != _eepromCapacity || logStatus.recSize != _logRecSize || logStatus.wrap != _wrapMode) {
+    if ( logStatus._eepromCap != _eepromCapacity || logStatus._recSize != _logRecSize || logStatus._wrap != _wrapMode) {
         Serial << F("Configuration changed, INITIALIZE required.") << endl;
         return true;
     }

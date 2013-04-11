@@ -205,6 +205,7 @@ void loop(void)
             LOGDATA.initialize();
             LOGDATA.readLogStatus(true);
             STATE = ENTER_COMMAND;
+            createData(5000);
             break;
             
         case LOGGING:

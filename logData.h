@@ -24,7 +24,7 @@
 class logData
 {
     public:
-        logData(unsigned long eepromCapacity, boolean wrapWhenFull);
+        logData(unsigned long eepromCapacity, boolean wrapMode);
         void initialize(void);
         boolean write(void);
         void download(Timezone *tz);
@@ -52,11 +52,11 @@ class logData
     
         union {                           //logging status data persisted in RTC SRAM (battery-backed)
             struct {
-                unsigned long eepromCapacity; //copy of _eepromCapacity
-                byte recSize;                 //copy of _logRecSize
-                boolean wrap;                 //copy of _wrapWhenFull
-                unsigned long next;           //copy of _nextRecord
-                boolean full;                 //copy of _eepromFull
+                unsigned long _eepromCap; //copy of _eepromCapacity
+                byte _recSize;            //copy of _logRecSize
+                boolean _wrap;            //copy of _wrapMode
+                unsigned long _next;      //copy of _nextRecord
+                boolean _full;            //copy of _eepromFull
             };
             byte bytes[11];
         } logStatus;

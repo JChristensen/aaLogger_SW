@@ -115,3 +115,27 @@ void dumpEEPROM(unsigned long addr, unsigned int nBytes)
     }
 }
 #endif
+
+void createData(int nrec)
+{
+    int i;
+    time_t rtcTime = RTC.get();
+    
+    for (i=0; i<nrec; i++) {
+        LOGDATA.fields.timestamp = rtcTime;
+        LOGDATA.fields.sensorTemp = i;
+        LOGDATA.fields.rtcTemp = i;
+        LOGDATA.fields.batteryVoltage = i;
+        LOGDATA.fields.regulatorVoltage = i;
+        if (!LOGDATA.write()) {
+            Serial << F("write fail in createData") << endl;
+            STATE = POWER_DOWN;
+            return;
+        }
+        else if (i % 100 == 0) {
+            Serial << F("createData:") << i << endl;
+            rtcTime = RTC.get();
+        }
+    }
+    Serial << F("createData:") << i << endl;
+}
