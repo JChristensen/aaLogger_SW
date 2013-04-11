@@ -4,20 +4,20 @@
 #include "logData.h"
 
 //instantiate the logData and extEEPROM objects
-logData LOGDATA = logData ( EEPROM_SIZE, WRAP_MODE );
-extEEPROM EEEP = extEEPROM ( EEPROM_SIZE, EEPROM_PAGE );
+logData LOGDATA = logData ( EEPROM_SIZE * NBR_EEPROM, WRAP_MODE );
+extEEPROM EEEP = extEEPROM ( EEPROM_SIZE, NBR_EEPROM, EEPROM_PAGE );
 
-// the constructor specifies the total EEPROM size (all devices
+// the constructor specifies the total EEPROM capacity (all devices
 // combined) in kB, and whether wrap mode is enabled (wrap mode
 // causes the oldest log record to be overwritten when EEPROM memory
 // is full).
 //
 // Whenever the EEPROM size or wrap mode is changed an INITIALIZE
 // is required before logging can begin.
-logData::logData(unsigned long eepromSize, boolean wrapWhenFull)
+logData::logData(unsigned long eepromCapacity, boolean wrapMode)
 {
-    _eepromSize = eepromSize * 1024UL;
-    _wrapWhenFull = wrapWhenFull;
+    _eepromCapacity = eepromCapacity * 1024UL;
+    _wrapMode = wrapMode;
 }
 
 //reset EEPROM status to empty
@@ -34,8 +34,11 @@ boolean logData::readFirst(void)
 {
     if ( (_nextRecord == 0) && !_eepromFull)
         return false;
-    else if (_wrapWhenFull)
+    else if (_wrapMode && _eepromFull) {
         _readRecord = _nextRecord;
+        if (_nextRecord + _logRecSize > _eepromCapacity)    //would this read go past the top of EEPROM?
+            _readRecord = 0;
+    }
     else
         _readRecord = 0;
     
@@ -43,6 +46,7 @@ boolean logData::readFirst(void)
     Serial << _readRecord << ' ';
     #endif
     EEEP.read(_readRecord, LOGDATA.bytes, _logRecSize);
+    _readRecord += _logRecSize;
     return true;
 }
 
@@ -50,45 +54,55 @@ boolean logData::readFirst(void)
 //returns false if there is no more data to be read.
 boolean logData::readNext(void)
 {
-    _readRecord += _logRecSize;
-    if (_readRecord >= _eepromSize) _readRecord = 0;
-        
     if (_readRecord == _nextRecord)
         return false;
-    else {
-        #if DEBUG_MODE == 1
-        Serial << _readRecord << ' ';
-        #endif
-        EEEP.read(_readRecord, LOGDATA.bytes, _logRecSize);
-        return true;
-    }    
+        
+    if (_wrapMode && _eepromFull) {
+        if (_readRecord + _logRecSize > _eepromCapacity)    //would this read go past the top of EEPROM?
+            _readRecord = 0;
+    }
+        
+    #if DEBUG_MODE == 1
+    Serial << _readRecord << ' ';
+    #endif
+    EEEP.read(_readRecord, LOGDATA.bytes, _logRecSize);
+    _readRecord += _logRecSize;
+    return true;
 }
 
 //write a log record into the next eeprom slot.
-//returns false if eeprom is full and wrap mode is off.
+//returns false if eeprom is full and wrap mode is off,
+//or if a write error occurs.
 boolean logData::write(void)
 {
-    if (!_wrapWhenFull && _eepromFull) return false;    //no room at the inn
-    
-    EEEP.write(_nextRecord, LOGDATA.bytes, _logRecSize);
-    _nextRecord += _logRecSize;
-
-    if (_nextRecord >= _eepromSize) {    //past the top of eeprom?
-        _eepromFull = true;              //yes, next record goes to addr 0
-        _nextRecord = 0;
-        if (!_wrapWhenFull) {            //but is wrap mode off?
-            writeLogStatus(false);       //save just the current pointer and eeprom-full status
-            return false;                //yes, tell the caller
+    if (!_wrapMode && _eepromFull) {    //check that eeprom is not already full, just in case
+        return false;
+    }
+    else if (_nextRecord + _logRecSize > _eepromCapacity) {    //would this write go past the top of EEPROM?
+        _nextRecord = 0;                         //yes, start over at the bottom
+        _eepromFull = true;                      //set eeprom full flag
+        if (!_wrapMode) {
+           return false;        //but if not in wrap mode, don't write, just tell the caller
         }
     }
-    writeLogStatus(false);
-    return true;
+
+    if ( EEEP.write(_nextRecord, LOGDATA.bytes, _logRecSize) != 0 ) {    //write the record
+        return false;        //something wrong, probably an I2C error
+    }
+    else {
+        #if DEBUG_MODE == 1
+        Serial << F(" wrote ") << _nextRecord << endl;
+        #endif
+        _nextRecord += _logRecSize;
+        writeLogStatus(false);
+        return true;
+    }
 }
 
 //send the logged data to the serial monitor in CSV format.
 //pass a pointer to a local time zone object to allow timestamps to be output in local time.
-//when changing the log data structure, the code blocks below with
-//comments (1) and (2) will need modification.
+//when changing the log data structure, the code block below with
+//comment (1) will need modification.
 void logData::download(Timezone *tz)
 {
     unsigned long ms, msLast;
@@ -97,15 +111,12 @@ void logData::download(Timezone *tz)
     TimeChangeRule *tcr;                  //pointer to the time change rule, use to get TZ abbrev
     
     if (readFirst()) {
-
-        { /*---- (1) CSV HEADER ----*/
-            Serial << F("utc,local,tz,sensorTemp,rtcTemp,batteryVoltage,regulatorVoltage") << endl;
-        }
+        Serial << F(CSV_HEADER) << endl;
 
         do {
             ++nRec;
 
-            { /*---- (2) CSV DATA ----*/
+            { /*---- (1) PRINT CSV DATA TO SERIAL MONITOR ----*/
                 print8601(LOGDATA.fields.timestamp);
                 print8601((*tz).toLocal(LOGDATA.fields.timestamp, &tcr));
                 Serial << tcr -> abbrev << ',';
@@ -139,9 +150,9 @@ void logData::writeLogStatus(boolean writeConfig)
     Serial << F("Write: next rec ") << _nextRecord << F(" full ") << _eepromFull << endl;
     #endif
     if (writeConfig) {                         //include configuration parameters
-        logStatus.eepromSize = _eepromSize;
+        logStatus.eepromCapacity = _eepromCapacity;
         logStatus.recSize = _logRecSize;
-        logStatus.wrap = _wrapWhenFull;
+        logStatus.wrap = _wrapMode;
     }
     logStatus.next = _nextRecord;              //current status
     logStatus.full = _eepromFull;
@@ -170,17 +181,17 @@ boolean logData::readLogStatus(boolean printStatus)
     Serial << F("Read: next rec ") << _nextRecord << F(" full ") << _eepromFull << endl;
     #endif
     if (printStatus) {
-        recordsLogged = _eepromFull ? _eepromSize / _logRecSize : _nextRecord/_logRecSize;
-        pctAvail = (recordsLogged * 10000UL) / (_eepromSize / _logRecSize);
+        recordsLogged = _eepromFull ? _eepromCapacity / _logRecSize : _nextRecord/_logRecSize;
+        pctAvail = (recordsLogged * 10000UL) / (_eepromCapacity / _logRecSize);
         pctAvail = (10000UL - pctAvail + 5 ) / 10;
-        Serial << _DEC(_eepromSize >> 10) << F("kB EEPROM, ");
+        Serial << _DEC(_eepromCapacity >> 10) << F("kB EEPROM, ");
         Serial << _DEC(pctAvail / 10) << '.' << (pctAvail % 10) << F("% available.") << endl;
         Serial << _DEC(recordsLogged) << F(" Record") << (recordsLogged==1 ? "" : "s");
         Serial << F(" logged, Record size ") << _DEC(_logRecSize) << F(" bytes, ");
-        if (!_wrapWhenFull) Serial << F("NO-");
+        if (!_wrapMode) Serial << F("NO-");
         Serial << F("WRAP mode.") << endl;
     }
-    if (_eepromFull && !_wrapWhenFull)
+    if (_eepromFull && !_wrapMode)
         return false;
     else
         return true;
@@ -190,7 +201,7 @@ boolean logData::readLogStatus(boolean printStatus)
 boolean logData::configChanged(boolean printStatus)
 {
     readLogStatus(printStatus);
-    if ( logStatus.eepromSize != _eepromSize || logStatus.recSize != _logRecSize || logStatus.wrap != _wrapWhenFull) {
+    if ( logStatus.eepromCapacity != _eepromCapacity || logStatus.recSize != _logRecSize || logStatus.wrap != _wrapMode) {
         Serial << F("Configuration changed, INITIALIZE required.") << endl;
         return true;
     }

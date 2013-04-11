@@ -39,16 +39,15 @@ void printI00(int val, char delim)
 
 #if RTC_TYPE == 79412
 /*----------------------------------------------------------------------*
- * Dump the first 32 bytes of RTC SRAM                                  *
+ * Dump the first nBytes of RTC SRAM                                    *
  *----------------------------------------------------------------------*/
 #define RTC_ADDR 0x6F
-void dumpRTC()
+void dumpRTC(uint8_t nBytes)
 {
-    #define N_BYTES 32           //number of bytes to dump
     uint8_t d;                   //data byte from the RTC
     
     Serial << endl << "RTC Registers";
-    for (uint8_t a=0; a<N_BYTES; a+=8) {
+    for (uint8_t a=0; a<nBytes; a+=8) {
         Serial << endl << "0x" << (a < 0x10 ? "0" : "" ) << _HEX(a);
         Wire.beginTransmission(RTC_ADDR);
         Wire.write(a);
@@ -88,3 +87,31 @@ int readVcc(void)
     return 1126400L / ADC;                    //calculate AVcc in mV (1.1 * 1000 * 1024)
 }
 
+#if DEBUG_MODE == 1
+/*----------------------------------------------------------------------*
+ * Dump EEPROM starting at addr for nBytes.                             *
+ * (Always dumps a multiple of eight bytes.)                            *
+ *----------------------------------------------------------------------*/
+extEEPROM ep = extEEPROM (32, 1, 64);
+void dumpEEPROM(unsigned long addr, unsigned int nBytes)
+{
+    uint8_t d;                   //data byte from the EEPROM
+    unsigned long a;
+    
+    Serial << endl << "EEPROM Dump" << endl;
+    a = addr;
+    while (a < addr + nBytes) {
+        Serial << "0x";                    //print address
+        if (a < 16*16*16) Serial << '0';
+        if (a < 16*16) Serial << '0';
+        if (a < 16) Serial << '0';
+        Serial << _HEX(a);
+        
+        for (uint8_t i=0; i<8; i++) {
+            ep.read(a++, &d, 1);
+            Serial << ( d < 0x10 ? " 0" : " ") << _HEX(d);
+        }
+        Serial << endl;
+    }
+}
+#endif

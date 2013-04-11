@@ -4,19 +4,19 @@
 #include <avr/wdt.h>
 #include <Button.h>           //http://github.com/JChristensen/Button
 #include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
-#include "logData.h"          //part of this project
 #include <OneWire.h>          //http://www.pjrc.com/teensy/td_libs_OneWire.html
 #include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
 #include <Time.h>             //http://playground.arduino.cc/Code/Time
 #include <Timezone.h>         //http://github.com/JChristensen/Timezone
 #include <Wire.h>             //http://arduino.cc/en/Reference/Wire
+#include "config.h"
+#include "defs.h"
+#include "logData.h"
 
 //select RTC by commenting one of the next two lines, and setting the #define accordingly.
 //make similar changes in the logData.h file also.
 //#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
 #include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
-#include "defs.h"
-#include "config.h"
 
 //Continental US Time Zones
 TimeChangeRule EDT = {"EDT", Second, Sun, Mar, 2, -240};    //Daylight time = UTC - 4 hours
@@ -43,6 +43,7 @@ enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN, DOWNLOAD, 
 #if RTC_TYPE == 79412
 tmElements_t tm;
 time_t alarmTime;
+int rtcTemp;                          //use as a counter with mcp79412 rtc
 #endif
 
 void setup(void)
@@ -85,6 +86,9 @@ void setup(void)
     printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
     LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
+    #if DEBUG_MODE == 1
+    dumpRTC(32);
+    #endif
 }
 
 void loop(void)
@@ -98,7 +102,7 @@ void loop(void)
     ms = millis();
     switch (STATE)
     {
-        case ENTER_COMMAND:
+        case ENTER_COMMAND:                  //transition state before entering the COMMAND state
             msStateTime = ms;                //record the time command mode started
             digitalWrite(RED_LED, redLedState = HIGH);
             digitalWrite(GRN_LED, LOW);
@@ -160,7 +164,7 @@ void loop(void)
                 RTC.alarm(ALARM_0);               //clear the alarm flag
                 RTC.enableAlarm(ALARM_0, ALM_MATCH_MINUTES);
                 #if DEBUG_MODE == 1
-                dumpRTC();
+                dumpRTC(32);
                 #endif
                 #else    
                 RTC.setAlarm( ALM2_MATCH_MINUTES, alarmMin, 0, 0);    //set RTC alarm 2 to match on minutes
@@ -262,14 +266,16 @@ void loop(void)
 //read the sensors, log the data, then sleep.
 //when changing the log data structure, the code blocks below with
 //comments (1), (2) and (3) will need modification.
-//block (3) is optional and can be deleted if desired, doing so will save a little power.
+//block (3) is optional and can be deleted if desired, doing so will save a little run time and therefore power.
 void logSensorData(void)
 {
     time_t rtcTime;
     uint8_t curMin, alarmMin;
     int tF10;                         //temperature in fahrenheit times 10
-    int rtcTemp;                      //temperature from RTC times 10
     boolean validTemp;
+    #if RTC_TYPE == 3232
+    int rtcTemp;                      //temperature from RTC times 10
+    #endif
     
     digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
     delay(1);                         //a little ramp-up time
@@ -278,7 +284,7 @@ void logSensorData(void)
     { /*---- (1) READ SENSORS ----*/
         validTemp = readDS18B20(&tF10);
         #if RTC_TYPE == 79412
-        rtcTemp = 0;
+        ++rtcTemp;
         #else
         rtcTemp = RTC.temperature() * 9 / 2 + 320;
         #endif
@@ -292,19 +298,19 @@ void logSensorData(void)
         LOGDATA.fields.regulatorVoltage = vccRegulator;
     }
 
-    { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
-        printTime(rtcTime); printDate(rtcTime);
-        if (validTemp) Serial << ", " << tF10 / 10 << '.' << tF10 % 10 << " F";
-        Serial << ", RTC " << rtcTemp / 10 << '.' << rtcTemp % 10 << " F";
-        Serial << F(", Bat ") << vccBattery << F(" mV, Reg ") << vccRegulator << F(" mV") << endl;
-    }
-
     if (!LOGDATA.write()) {
         #if DEBUG_MODE == 1
         Serial << F("EEPROM FULL") << endl;
         #endif
         STATE = POWER_DOWN;
         return;
+    }
+
+    { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
+        printTime(rtcTime); printDate(rtcTime);
+        if (validTemp) Serial << ", " << tF10 / 10 << '.' << tF10 % 10 << " F";
+        Serial << ", RTC " << rtcTemp / 10 << '.' << rtcTemp % 10 << " F";
+        Serial << F(", Bat ") << vccBattery << F(" mV, Reg ") << vccRegulator << F(" mV") << endl;
     }
 
     //calculate the minute for the next alarm
@@ -324,7 +330,7 @@ void logSensorData(void)
     RTC.alarm(ALARM_0);               //clear the alarm flag
     RTC.enableAlarm(ALARM_0, ALM_MATCH_MINUTES);
     #if DEBUG_MODE == 1
-    dumpRTC();
+    //dumpRTC(32);
     #endif
     #else
     RTC.setAlarm( ALM2_MATCH_MINUTES, alarmMin, 0, 0);

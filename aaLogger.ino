@@ -4,7 +4,7 @@
  *                                                                      *
  * Features:                                                            *
  * - Runs on two AA alkaline cells.                                     *
- * - A DS3232 real-time clock provides timing for logging and battery-  *
+ * - DS3232 real-time clock provides timing for logging and battery-    *
  *   backed SRAM to persist EEPROM pointers and status through MCU      *
  *   resets and main battery changes.                                   *
  * - Data is logged to external EEPROM (1 or 2 x M24M02 for up to       *
