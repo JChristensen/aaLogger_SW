@@ -42,23 +42,30 @@ class logData
         void writeLogStatus(boolean writeConfig);
         void print8601(time_t t);
         void printI00(int val, char delim);
-        unsigned long _eepromCapacity;    //EEPROM capacity in bytes (total for all EEPROM devices combined)
-        static const byte _logRecSize = sizeof(logData_t);
-        boolean _wrapMode;                //true: logging continues when EEPROM is full, next record replacing the oldest
-                                          //false: logging stops at the top EEPROM memory address
-        unsigned long _nextRecord;        //EEPROM address where the next log data record will be written
-        boolean _eepromFull;
-        unsigned long _readRecord;        //for reading/downloading
+
+        unsigned long _firstAddr;         //pointer to the oldest record in EEPROM
+        unsigned long _lastAddr;          //pointer to the newest record in EEPROM
+        unsigned long _nRec;              //number of records stored in EEPROM
+        unsigned long _eepromCap;         //EEPROM capacity in bytes (total for all EEPROM devices combined)
+        unsigned long _maxRec;            //maximum number of records that will fit in EEPROM
+        unsigned long _topAddr;           //pointer to the last EEPROM location that can hold a whole record
+        static const byte _recSize = sizeof(logData_t);    //size of log record in bytes
+        boolean _wrapMode;                //true: continue logging when EEPROM is full, next record replacing the oldest
+                                          //false: logging stops when EEPROM is full
+        unsigned long _readAddr;          //pointer to read records
     
         union {                           //logging status data persisted in RTC SRAM (battery-backed)
             struct {
-                unsigned long _eepromCap; //copy of _eepromCapacity
-                byte _recSize;            //copy of _logRecSize
-                boolean _wrap;            //copy of _wrapMode
-                unsigned long _next;      //copy of _nextRecord
-                boolean _full;            //copy of _eepromFull
+                unsigned long firstAddr;  //copies of variables above
+                unsigned long lastAddr;
+                unsigned long nRec;
+                unsigned long eepromCap;
+                unsigned long maxRec;
+                unsigned long topAddr;
+                byte recSize;
+                boolean wrapMode;
             };
-            byte bytes[11];
+            byte bytes[26];
         } logStatus;
 };
 

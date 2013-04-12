@@ -89,6 +89,7 @@ void setup(void)
     #if DEBUG_MODE == 1
     dumpRTC(32);
     #endif
+    TWBR = 2;    //sets I2C SCL to 400kHz SCL (assuming 8MHz system clock)
 }
 
 void loop(void)
@@ -180,7 +181,7 @@ void loop(void)
                 EIMSK = _BV(INT1);                //enable INT1
                 gotoSleep(false);                 //go to sleep, shut the regulator down
             }
-            else if (ms - msStateTime >= STATE_TIMEOUT * 1000UL){
+            else if (ms - msStateTime >= STATE_TIMEOUT * 1000UL) {
                 STATE = POWER_DOWN;
             }
             
@@ -205,7 +206,10 @@ void loop(void)
             LOGDATA.initialize();
             LOGDATA.readLogStatus(true);
             STATE = ENTER_COMMAND;
-//            createData(5000);
+//            unsigned long createStart;
+//            createStart = millis();
+//            createData(1000);
+//            Serial << _DEC(millis() - createStart) << F("ms") << endl;
             break;
             
         case LOGGING:
