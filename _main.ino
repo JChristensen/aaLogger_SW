@@ -206,10 +206,7 @@ void loop(void)
             LOGDATA.initialize();
             LOGDATA.readLogStatus(true);
             STATE = ENTER_COMMAND;
-//            unsigned long createStart;
-//            createStart = millis();
-//            createData(1000);
-//            Serial << _DEC(millis() - createStart) << F("ms") << endl;
+//            createData(2148);
             break;
             
         case LOGGING:

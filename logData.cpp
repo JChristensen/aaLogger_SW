@@ -139,7 +139,7 @@ void logData::download(Timezone *tz)
         } while (readNext());
         digitalWrite(RED_LED, LOW);
         digitalWrite(GRN_LED, LOW);
-        Serial << F("*EOF ") << _DEC(nRec) << F(" Records.") << endl;
+        Serial << F("*EOF ") << _DEC(nRec) << F(" Record") << (_nRec==1 ? "" : "s") << '.' << endl;
     }
     else {
         Serial << F("NO DATA LOGGED") << endl;
