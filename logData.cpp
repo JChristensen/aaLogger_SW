@@ -127,7 +127,9 @@ void logData::download(Timezone *tz)
                 Serial << _DEC(LOGDATA.fields.sensorTemp) << ',';
                 Serial << _DEC(LOGDATA.fields.rtcTemp) << ',';
                 Serial << _DEC(LOGDATA.fields.batteryVoltage) << ',';
-                Serial << _DEC(LOGDATA.fields.regulatorVoltage) << endl;
+                Serial << _DEC(LOGDATA.fields.regulatorVoltage) << ',';
+                Serial << _DEC(LOGDATA.fields.ldr1) << ',';
+                Serial << _DEC(LOGDATA.fields.ldr2) << endl;
             }
 
             ms = millis();                //flash LEDs while downloading data

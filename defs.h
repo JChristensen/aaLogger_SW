@@ -24,9 +24,11 @@
 #define DS18B20_GND 10                //DS18B20 ground pin
 #define BOOST_REGULATOR 11            //high enables the regulator, low passes battery voltage through
 #define L_LED LED_BUILTIN
-#define PERIP_POWER A1                //RTC and EEPROM power is supplied from this pin
-#define START_BUTTON A2
-#define DWNLD_BUTTON A3
+#define PERIP_POWER A3                //RTC and EEPROM power is supplied from this pin
+#define START_BUTTON 4
+#define DWNLD_BUTTON 5
+#define LDR1 A1
+#define LDR2 A2
 
 //state, switch & LED timing
 #define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode
