@@ -124,11 +124,8 @@ void logData::download(Timezone *tz)
                 print8601(LOGDATA.fields.timestamp);
                 print8601((*tz).toLocal(LOGDATA.fields.timestamp, &tcr));
                 Serial << tcr -> abbrev << ',';
-                Serial << _DEC(LOGDATA.fields.tempSensor) << ',';
                 Serial << _DEC(LOGDATA.fields.tempRTC) << ',';
-                Serial << _DEC(LOGDATA.fields.ldr1) << ',';
-                Serial << _DEC(LOGDATA.fields.vBat1) << ',';
-                Serial << _DEC(LOGDATA.fields.vBat2) << ',';
+                Serial << _DEC(LOGDATA.fields.vBat) << ',';
                 Serial << _DEC(LOGDATA.fields.vReg) << endl;
             }
 
@@ -162,11 +159,7 @@ void logData::writeLogStatus(boolean writeConfig)
     logStatus.firstAddr = _firstAddr;          //current status
     logStatus.lastAddr = _lastAddr;
     logStatus.nRec = _nRec;
-    #if RTC_TYPE == 79412
-    RTC.sramWrite(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
-    #else
     RTC.writeRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
-    #endif
 }
 
 //read and optionally print the log status (pointer to next record, etc.) from the RTC's SRAM.
@@ -175,11 +168,7 @@ boolean logData::readLogStatus(boolean printStatus)
 {
     unsigned long pctAvail;
     
-    #if RTC_TYPE == 79412
-    RTC.sramRead(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
-    #else
     RTC.readRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
-    #endif
     _firstAddr = logStatus.firstAddr;
     _lastAddr = logStatus.lastAddr;
     _nRec = logStatus.nRec;

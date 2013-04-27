@@ -9,11 +9,7 @@
 #include <WProgram.h> 
 #endif
 
-//select RTC by commenting one of the next two lines, and setting the #define accordingly.
-//make similar changes in the _main file also.
 #include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
-//#include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
-
 #include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
 #include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
 #include <Time.h>             //http://playground.arduino.cc/Code/Time

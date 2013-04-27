@@ -15,7 +15,6 @@ boolean readDS18B20(int *tF10)
     //sleep while conversion in progress, leave the regulator on for the sensor
     wdtEnable();
     gotoSleep(true);
-    digitalWrite(PERIP_POWER, HIGH);    //sleep shuts off the peripherals
     wdtDisable();
 
     //read the results

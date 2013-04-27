@@ -2,7 +2,10 @@
  * Double-A DataLogger - A low-power Arduino-based data logger.         *
  * Jack Christensen 20Mar2013 v1                                        *
  *                                                                      *
- * Features:                                                            *
+ * This basic logging sketch logs the date/time, the temperature from   *
+ * the DS3232 sensor, the battery and regulator voltages.               *
+ *                                                                      *
+ * Double-A DataLogger Features:                                        *
  * - Runs on two AA alkaline cells.                                     *
  * - DS3232 real-time clock provides timing for logging and battery-    *
  *   backed SRAM to persist EEPROM pointers and status through MCU      *

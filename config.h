@@ -25,16 +25,14 @@
  *----------------------------------------------------------------------*/
 struct logData_t {
     unsigned long timestamp;
-    int tempSensor;
     int tempRTC;
-    int ldr1;
-    int vBat1;
-    int vBat2;
+    int vBat;
     int vReg;
+    byte RFU[2];          //make the log record a multiple of 4 bytes
 };
 
 //this line defines the field names and is printed at the beginning of the data when downloading
-#define CSV_HEADER "utc,local,tz,tempSensor,tempRTC,ldr,vBat1,vBat2,vReg"
+#define CSV_HEADER "utc,local,tz,tempRTC,vBat,vReg"
 
 #endif
 

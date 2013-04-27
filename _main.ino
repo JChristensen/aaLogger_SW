@@ -3,6 +3,7 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <Button.h>           //http://github.com/JChristensen/Button
+#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
 #include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
 #include <OneWire.h>          //http://www.pjrc.com/teensy/td_libs_OneWire.html
 #include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
@@ -12,11 +13,6 @@
 #include "config.h"
 #include "defs.h"
 #include "logData.h"
-
-//select RTC by commenting one of the next two lines, and setting the #define accordingly.
-//make similar changes in the logData.h file also.
-#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
-//#include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
 
 //Continental US Time Zones
 TimeChangeRule EDT = {"EDT", Second, Sun, Mar, 2, -240};    //Daylight time = UTC - 4 hours
@@ -34,7 +30,7 @@ Button btnStart(START_BUTTON, true, true, DEBOUNCE_MS);
 Button btnDownload(DWNLD_BUTTON, true, true, DEBOUNCE_MS);
 
 //global variables
-int vBat, vccBattery, vccRegulator;   //battery and regulator voltages
+int vBat, vccBattery, vccRegulator;   //battery and regulator voltages, read in setSystemClock() function
 byte nLogBlink;                       //counter for blinking LED when logging a record
 
 //states for the state machine
@@ -55,16 +51,16 @@ void setup(void)
         OUTPUT,          //7    red LED
         OUTPUT,          //8    green LED
         OUTPUT,          //9    sensor power enable
-        INPUT_PULLUP,    //10   unused
-        INPUT,           //11   DS18B20 DQ (external pullup)
-        INPUT_PULLUP,    //12   unused
-        INPUT_PULLUP,    //13   unused
-        INPUT_PULLUP,    //A0   LDR1
+        INPUT_PULLUP,    //10   [SS] unused
+        INPUT_PULLUP,    //11   [MOSI] unused
+        INPUT_PULLUP,    //12   [MISO] unused
+        INPUT_PULLUP,    //13   [SCK] unused
+        INPUT_PULLUP,    //A0   unused
         INPUT_PULLUP,    //A1   unused
         INPUT_PULLUP,    //A2   unused
         INPUT_PULLUP,    //A3   unused
-        INPUT,           //A4   SDA (external pullup)
-        INPUT            //A5   SCL (external pullup)
+        INPUT,           //A4   [SDA] external pullup on board
+        INPUT            //A5   [SCL] external pullup on board
     };
 
     for (uint8_t i=0; i<sizeof(pinModes); i++) {    //configure pins
@@ -81,9 +77,6 @@ void setup(void)
     printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
     LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
-    #if DEBUG_MODE == 1
-    dumpRtcRegisters();
-    #endif
     TWBR = 2;    //sets I2C SCL to 400kHz SCL (assuming 8MHz system clock)
 }
 
@@ -145,31 +138,11 @@ void loop(void)
                 rtcTime = RTC.get();
                 curMin = minute(rtcTime);
                 alarmMin = (curMin - curMin % LOG_INTERVAL + LOG_INTERVAL) % 60;
-                #if DEBUG_MODE == 1
-                Serial << F("First alarm=") << _DEC(alarmMin) << endl;
-                #endif
             
                 //set the alarm
-                #if RTC_TYPE == 79412
-                breakTime(rtcTime, tm);
-                tm.Minute = alarmMin;
-                tm.Second = 0;
-                alarmTime = makeTime(tm);
-                //set RTC alarm 0, enable to match on minutes
-                RTC.setAlarm(ALARM_0, alarmTime);
-                RTC.alarm(ALARM_0);               //clear the alarm flag
-                RTC.enableAlarm(ALARM_0, ALM_MATCH_MINUTES);
-                #if DEBUG_MODE == 1
-                dumpRTC(32);
-                #endif
-                #else    
                 RTC.setAlarm( ALM2_MATCH_MINUTES, alarmMin, 0, 0);    //set RTC alarm 2 to match on minutes
                 RTC.alarm(ALARM_2);                   //clear RTC interrupt flag
                 RTC.alarmInterrupt(ALARM_2, true);    //enable alarm 2 interrupts
-                #if DEBUG_MODE == 1
-                dumpRtcRegisters();
-                #endif
-                #endif
                 
                 EICRA = _BV(ISC11);               //interrupt on falling edge
                 EIFR = _BV(INTF1);                //clear the interrupt flag (setting ISCnn can cause an interrupt)
@@ -201,7 +174,6 @@ void loop(void)
             LOGDATA.initialize();
             LOGDATA.readLogStatus(true);
             STATE = ENTER_COMMAND;
-//            createData(2148);
             break;
             
         case LOGGING:
@@ -218,13 +190,8 @@ void loop(void)
                 delay(BLIP_ON);
             }
             Serial << endl << F("POWER DOWN") << endl;
-            #if RTC_TYPE == 79412
-            RTC.enableAlarm(ALARM_0, ALM_DISABLE);
-            RTC.enableAlarm(ALARM_1, ALM_DISABLE);
-            #else
             RTC.alarmInterrupt(ALARM_1, false);
             RTC.alarmInterrupt(ALARM_2, false);
-            #endif
             EIMSK = 0;                //might as well also disable external interrupts to make absolutely sure
             gotoSleep(false);
             STATE = ENTER_COMMAND;    //should never get here but just in case
@@ -269,78 +236,47 @@ void logSensorData(void)
 {
     time_t rtcTime;
     uint8_t curMin, alarmMin;
-    int tF10;                         //temperature in fahrenheit times 10
-    boolean validTemp;
-    int tempRTC, ldr1;
-    
-    digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
-    delay(1);                         //a little ramp-up time
+    int tempRTC;
+    //int tempSensor;                         //sensor temperature (fahrenheit times 10)
+    //boolean validTemp;
+
     rtcTime = RTC.get();
 
     { /*---- (1) READ SENSORS ----*/
-        digitalWrite(SENSOR_POWER, HIGH);
-        vBat = readBattery();
         tempRTC = RTC.temperature() * 9 / 2 + 320;
-        validTemp = readDS18B20(&tF10);
-        vBat = readBattery();
-        analogReference(DEFAULT);
-        ldr1 = analogRead(LDR1);
-        delay(2);
-        ldr1 = analogRead(LDR1);
-        digitalWrite(SENSOR_POWER, LOW);
+        //digitalWrite(SENSOR_POWER, HIGH);
+        //validTemp = readDS18B20(&tempSensor);
+        //digitalWrite(SENSOR_POWER, LOW);
     }
 
     { /*---- (2) SAVE SENSOR DATA ----*/
         LOGDATA.fields.timestamp = rtcTime;
-        LOGDATA.fields.tempSensor = tF10;
+        //LOGDATA.fields.tempRTC = tempSensor;
         LOGDATA.fields.tempRTC = tempRTC;
-        LOGDATA.fields.ldr1 = ldr1;
-        LOGDATA.fields.vBat1 = vBat;
-        LOGDATA.fields.vBat2 = vccBattery;
+        LOGDATA.fields.vBat = vccBattery;
         LOGDATA.fields.vReg = vccRegulator;
     }
 
     if (!LOGDATA.write()) {
-        #if DEBUG_MODE == 1
         Serial << F("EEPROM FULL") << endl;
-        #endif
         STATE = POWER_DOWN;
         return;
     }
 
     { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
         printTime(rtcTime); printDate(rtcTime);
-        if (validTemp) Serial << F(", ") << tF10;
-        Serial << F(", ") << tempRTC << F(", ") << ldr1 << F(", ");
-        Serial << vBat << F(", ") << vccBattery << F(", ") << vccRegulator << endl;
+        //if (validTemp) Serial << F(", ") << tempSensor;
+        Serial << F(", ") << tempRTC << F(", ");
+        Serial << vccBattery << F(", ") << vccRegulator << endl;
     }
 
     //calculate the minute for the next alarm
     curMin = minute(rtcTime);
     alarmMin = (curMin + LOG_INTERVAL) % 60;
-    #if DEBUG_MODE == 1
-    Serial << F("Next alarm=") << _DEC(alarmMin) << endl;
-    #endif
     
     //set the alarm
-    #if RTC_TYPE == 79412
-    breakTime(rtcTime, tm);
-    tm.Minute = alarmMin;
-    tm.Second = 0;
-    alarmTime = makeTime(tm);
-    RTC.setAlarm(ALARM_0, alarmTime);
-    RTC.alarm(ALARM_0);               //clear the alarm flag
-    RTC.enableAlarm(ALARM_0, ALM_MATCH_MINUTES);
-    #if DEBUG_MODE == 1
-    //dumpRTC(32);
-    #endif
-    #else
     RTC.setAlarm( ALM2_MATCH_MINUTES, alarmMin, 0, 0);
-    #if DEBUG_MODE == 1
-    dumpRtcRegisters();
-    #endif
     RTC.alarm(ALARM_2);               //clear RTC interrupt flag
-    #endif
 
     //blink LED to indicate record logged
     if (nLogBlink) {
@@ -349,7 +285,6 @@ void logSensorData(void)
         delay(LOG_BLINK);
         digitalWrite(GRN_LED, LOW);
     }
-    
     gotoSleep(false);                 //go back to sleep, shut the regulator down
 }
 
@@ -367,7 +302,10 @@ void gotoSleep(boolean enableRegulator)
     pinMode(SDA, INPUT);
     sleep_enable();
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    if (!enableRegulator) setSystemClock(CLOCK_1MHZ);
+    if (!enableRegulator) {
+		digitalWrite(SENSOR_POWER, LOW);   //sensor power off
+		setSystemClock(CLOCK_1MHZ);
+	}
     adcsra = ADCSRA;               //save the ADC Control and Status Register A
     ADCSRA = 0;                    //disable ADC
     //disable brown-out detector while MCU sleeps, must sleep within four clock cycles
@@ -383,6 +321,8 @@ void gotoSleep(boolean enableRegulator)
     ADCSRA = adcsra;               //restore ADCSRA    
     Serial.begin(BAUD_RATE);
     pinMode(PERIP_POWER, OUTPUT);
+    digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
+    delay(1);                         //a little ramp-up time
 }
 
 //interrupt from the RTC alarm. don't need to do anything, it's just to wake the MCU.

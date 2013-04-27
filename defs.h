@@ -5,17 +5,6 @@
 #ifndef defs_h
 #define defs_h
 
-#define RTC_TYPE 3232                 //set to 79412 for MCP79412 or 3232 for DS3232 only.
-#if RTC_TYPE == 79412
-#define RTC_RAM_STATUS 0x00           //address in the RTC SRAM to keep log status
-#else
-#define RTC_RAM_STATUS 0x14
-#endif
-
-#define SOFTWARE_VERSION 1
-#define DEBUG_MODE 0
-#define BAUD_RATE 57600               //speed for serial interface, must be <= 57600 with 8MHz system clock
-
 //MCU pin assignments
 #define PERIP_POWER 2                 //RTC and EEPROM power is supplied from this pin
 #define BOOST_REGULATOR 4             //high enables the regulator, low passes battery voltage through
@@ -40,6 +29,12 @@
 //MCU system clock prescaler values
 #define CLOCK_8MHZ 0                  //CLKPS[3:0] value for divide by 1
 #define CLOCK_1MHZ 3                  //CLKPS[3:0] value for divide by 8
+
+//other
+#define DEBUG_MODE 0
+#define SOFTWARE_VERSION 1
+#define BAUD_RATE 57600               //speed for serial interface, must be <= 57600 with 8MHz system clock
+#define RTC_RAM_STATUS 0x14           //address in the RTC SRAM to keep log status
 
 #endif
 
