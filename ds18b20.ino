@@ -8,7 +8,6 @@ boolean readDS18B20(int *tF10)
     uint8_t dsData[12];
     
     //start temperature conversion
-    digitalWrite(DS18B20_GND, LOW);    //power the DS18B20 on
     ds.reset();
     ds.skip();
     ds.write(0x44);
@@ -27,7 +26,6 @@ boolean readDS18B20(int *tF10)
     for ( int i=0; i<9; i++) { //read 9 bytes
         dsData[i] = ds.read();
     }
-    digitalWrite(DS18B20_GND, HIGH);    //power the DS18B20 off
     if (OneWire::crc8(dsData, 8) == dsData[8]) {
         *tF10 = toFahrenheit(dsData[1], dsData[0]);
         return true;

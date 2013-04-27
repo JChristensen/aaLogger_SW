@@ -15,8 +15,8 @@
 
 //select RTC by commenting one of the next two lines, and setting the #define accordingly.
 //make similar changes in the logData.h file also.
-//#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
-#include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
+#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
+//#include <MCP79412RTC.h>      //http://github.com/JChristensen/MCP79412RTC
 
 //Continental US Time Zones
 TimeChangeRule EDT = {"EDT", Second, Sun, Mar, 2, -240};    //Daylight time = UTC - 4 hours
@@ -34,17 +34,11 @@ Button btnStart(START_BUTTON, true, true, DEBOUNCE_MS);
 Button btnDownload(DWNLD_BUTTON, true, true, DEBOUNCE_MS);
 
 //global variables
-int vccBattery, vccRegulator;         //battery and regulator voltages
+int vBat, vccBattery, vccRegulator;   //battery and regulator voltages
 byte nLogBlink;                       //counter for blinking LED when logging a record
 
 //states for the state machine
 enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN, DOWNLOAD, SET_TIME} STATE;
-
-#if RTC_TYPE == 79412
-tmElements_t tm;
-time_t alarmTime;
-int rtcTemp;                          //use as a counter with mcp79412 rtc
-#endif
 
 void setup(void)
 {
@@ -53,22 +47,22 @@ void setup(void)
     const uint8_t pinModes[] = {        //initial pin configuration
         INPUT_PULLUP,    //0    RXD
         INPUT_PULLUP,    //1    TXD
-        INPUT_PULLUP,    //2    unused
+        OUTPUT,          //2    peripheral power (RTC, EEPROMs)
         INPUT_PULLUP,    //3    RTC interrupt
-        INPUT_PULLUP,    //4    start/init button
+        OUTPUT,          //4    boost regulator enable
         INPUT_PULLUP,    //5    download/set button
-        OUTPUT,          //6    red LED
-        OUTPUT,          //7    green LED
-        OUTPUT,          //8    spare LED
-        INPUT,           //9    DS18B20 data line (external pullup)
-        OUTPUT,          //10   DS18B20 ground
-        OUTPUT,          //11   regulator control
+        INPUT_PULLUP,    //6    start/init button
+        OUTPUT,          //7    red LED
+        OUTPUT,          //8    green LED
+        OUTPUT,          //9    sensor power enable
+        INPUT_PULLUP,    //10   unused
+        INPUT,           //11   DS18B20 DQ (external pullup)
         INPUT_PULLUP,    //12   unused
-        OUTPUT,          //13   builtin LED
-        INPUT_PULLUP,    //A0   unused
-        INPUT_PULLUP,    //A1   LDR1
-        INPUT_PULLUP,    //A2   LDR2
-        OUTPUT,          //A3   peripheral power (RTC, EEPROMs)
+        INPUT_PULLUP,    //13   unused
+        INPUT_PULLUP,    //A0   LDR1
+        INPUT_PULLUP,    //A1   unused
+        INPUT_PULLUP,    //A2   unused
+        INPUT_PULLUP,    //A3   unused
         INPUT,           //A4   SDA (external pullup)
         INPUT            //A5   SCL (external pullup)
     };
@@ -77,10 +71,10 @@ void setup(void)
         pinMode(i, pinModes[i]);
     }
     digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
-    digitalWrite(DS18B20_GND, HIGH);  //ds18b20 power off
+    digitalWrite(SENSOR_POWER, LOW);  //sensor power off
     setSystemClock(CLOCK_8MHZ);
     Serial.begin(BAUD_RATE);
-
+    
     rtcTime = RTC.get();
     localTime = myTZ.toLocal(rtcTime, &tcr);
     Serial << endl << F("Double-A Data Logger SW-v") << _DEC(SOFTWARE_VERSION) << endl;
@@ -88,7 +82,7 @@ void setup(void)
     LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
     #if DEBUG_MODE == 1
-    dumpRTC(32);
+    dumpRtcRegisters();
     #endif
     TWBR = 2;    //sets I2C SCL to 400kHz SCL (assuming 8MHz system clock)
 }
@@ -246,6 +240,7 @@ void loop(void)
                 utc = Serial.parseInt();
                 setTime(utc);
                 RTC.set(utc);
+                RTC.writeRTC(RTC_STATUS, 0x00);      //clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
                 local = myTZ.toLocal(utc, &tcr);
                 while (Serial.read() >= 0);
                 Serial << endl << F("Time set to: ") << endl;
@@ -275,38 +270,34 @@ void logSensorData(void)
     time_t rtcTime;
     uint8_t curMin, alarmMin;
     int tF10;                         //temperature in fahrenheit times 10
-    int ldr1, ldr2;
     boolean validTemp;
-    #if RTC_TYPE == 3232
-    int rtcTemp;                      //temperature from RTC times 10
-    #endif
+    int tempRTC, ldr1;
     
     digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
     delay(1);                         //a little ramp-up time
     rtcTime = RTC.get();
 
     { /*---- (1) READ SENSORS ----*/
-        analogReference(DEFAULT);
-        digitalWrite(DS18B20_GND, LOW);    //LDRs share the DS18B20 ground
-        delay(1);
-        ldr1 = analogRead(LDR1);
-        ldr2 = analogRead(LDR2);
+        digitalWrite(SENSOR_POWER, HIGH);
+        vBat = readBattery();
+        tempRTC = RTC.temperature() * 9 / 2 + 320;
         validTemp = readDS18B20(&tF10);
-        #if RTC_TYPE == 79412
-        ++rtcTemp;
-        #else
-        rtcTemp = RTC.temperature() * 9 / 2 + 320;
-        #endif
+        vBat = readBattery();
+        analogReference(DEFAULT);
+        ldr1 = analogRead(LDR1);
+        delay(2);
+        ldr1 = analogRead(LDR1);
+        digitalWrite(SENSOR_POWER, LOW);
     }
 
     { /*---- (2) SAVE SENSOR DATA ----*/
         LOGDATA.fields.timestamp = rtcTime;
-        LOGDATA.fields.sensorTemp = tF10;
-        LOGDATA.fields.rtcTemp = rtcTemp;
-        LOGDATA.fields.batteryVoltage = vccBattery;
-        LOGDATA.fields.regulatorVoltage = vccRegulator;
+        LOGDATA.fields.tempSensor = tF10;
+        LOGDATA.fields.tempRTC = tempRTC;
         LOGDATA.fields.ldr1 = ldr1;
-        LOGDATA.fields.ldr2 = ldr2;
+        LOGDATA.fields.vBat1 = vBat;
+        LOGDATA.fields.vBat2 = vccBattery;
+        LOGDATA.fields.vReg = vccRegulator;
     }
 
     if (!LOGDATA.write()) {
@@ -319,12 +310,9 @@ void logSensorData(void)
 
     { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
         printTime(rtcTime); printDate(rtcTime);
-        if (validTemp) Serial << F(", ") << tF10 << F(", ");
-        Serial << rtcTemp << F(", ") << vccBattery << F(", ") << vccRegulator << F(", ");
-        Serial << ldr1 << F(", ") << ldr2 << endl;
-//        if (validTemp) Serial << ", " << tF10 / 10 << '.' << tF10 % 10 << " F";
-//        Serial << ", RTC " << rtcTemp / 10 << '.' << rtcTemp % 10 << " F";
-//        Serial << F(", Bat ") << vccBattery << F(" mV, Reg ") << vccRegulator << F(" mV") << endl;
+        if (validTemp) Serial << F(", ") << tF10;
+        Serial << F(", ") << tempRTC << F(", ") << ldr1 << F(", ");
+        Serial << vBat << F(", ") << vccBattery << F(", ") << vccRegulator << endl;
     }
 
     //calculate the minute for the next alarm

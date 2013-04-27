@@ -5,9 +5,9 @@
 #ifndef defs_h
 #define defs_h
 
-#define RTC_TYPE 79412        //set to 79412 for MCP79412 or 3232 for DS3232 only.
+#define RTC_TYPE 3232                 //set to 79412 for MCP79412 or 3232 for DS3232 only.
 #if RTC_TYPE == 79412
-#define RTC_RAM_STATUS 0x00   //address in the RTC SRAM to keep log status
+#define RTC_RAM_STATUS 0x00           //address in the RTC SRAM to keep log status
 #else
 #define RTC_RAM_STATUS 0x14
 #endif
@@ -17,18 +17,15 @@
 #define BAUD_RATE 57600               //speed for serial interface, must be <= 57600 with 8MHz system clock
 
 //MCU pin assignments
-#define RED_LED 6
-#define GRN_LED 7
-#define SPARE_LED 8
-#define DS18B20_DQ 9                  //DS18B20 data pin
-#define DS18B20_GND 10                //DS18B20 ground pin
-#define BOOST_REGULATOR 11            //high enables the regulator, low passes battery voltage through
-#define L_LED LED_BUILTIN
-#define PERIP_POWER A3                //RTC and EEPROM power is supplied from this pin
-#define START_BUTTON 4
+#define PERIP_POWER 2                 //RTC and EEPROM power is supplied from this pin
+#define BOOST_REGULATOR 4             //high enables the regulator, low passes battery voltage through
 #define DWNLD_BUTTON 5
-#define LDR1 A1
-#define LDR2 A2
+#define START_BUTTON 6
+#define RED_LED 7
+#define GRN_LED 8
+#define SENSOR_POWER 9                //drives the mosfet to apply power to the sensors
+#define DS18B20_DQ 11                 //DS18B20 data pin
+#define LDR1 A0                       //CdS photocell
 
 //state, switch & LED timing
 #define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode

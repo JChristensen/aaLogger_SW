@@ -7,10 +7,10 @@
 #ifndef config_h
 #define config_h
 
-#define LOG_INTERVAL 5    //logging interval in minutes, must be >= 1 and <= 60
-#define NBR_EEPROM 1      //number of EEPROM devices on the I2C bus
-#define EEPROM_SIZE 32    //capacity of a SINGLE EEPROM device in KILOBYTES
-#define EEPROM_PAGE 64    //EEPROM page size in BYTES
+#define LOG_INTERVAL 1    //logging interval in minutes, must be >= 1 and <= 60
+#define NBR_EEPROM 2      //number of EEPROM devices on the I2C bus
+#define EEPROM_SIZE 256   //capacity of a SINGLE EEPROM device in KILOBYTES
+#define EEPROM_PAGE 256   //EEPROM page size in BYTES
 #define WRAP_MODE false   //true to overwrite oldest data once EEPROM is full, false to stop logging when EEPROM full
 
 /*----------------------------------------------------------------------*
@@ -25,16 +25,16 @@
  *----------------------------------------------------------------------*/
 struct logData_t {
     unsigned long timestamp;
-    int sensorTemp;
-    int rtcTemp;
-    int batteryVoltage;
-    int regulatorVoltage;
+    int tempSensor;
+    int tempRTC;
     int ldr1;
-    int ldr2;
+    int vBat1;
+    int vBat2;
+    int vReg;
 };
 
 //this line defines the field names and is printed at the beginning of the data when downloading
-#define CSV_HEADER "utc,local,tz,sensorTemp,rtcTemp,batteryVoltage,regulatorVoltage,ldr1,ldr2"
+#define CSV_HEADER "utc,local,tz,tempSensor,tempRTC,ldr,vBat1,vBat2,vReg"
 
 #endif
 

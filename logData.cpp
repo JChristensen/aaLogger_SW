@@ -124,12 +124,12 @@ void logData::download(Timezone *tz)
                 print8601(LOGDATA.fields.timestamp);
                 print8601((*tz).toLocal(LOGDATA.fields.timestamp, &tcr));
                 Serial << tcr -> abbrev << ',';
-                Serial << _DEC(LOGDATA.fields.sensorTemp) << ',';
-                Serial << _DEC(LOGDATA.fields.rtcTemp) << ',';
-                Serial << _DEC(LOGDATA.fields.batteryVoltage) << ',';
-                Serial << _DEC(LOGDATA.fields.regulatorVoltage) << ',';
+                Serial << _DEC(LOGDATA.fields.tempSensor) << ',';
+                Serial << _DEC(LOGDATA.fields.tempRTC) << ',';
                 Serial << _DEC(LOGDATA.fields.ldr1) << ',';
-                Serial << _DEC(LOGDATA.fields.ldr2) << endl;
+                Serial << _DEC(LOGDATA.fields.vBat1) << ',';
+                Serial << _DEC(LOGDATA.fields.vBat2) << ',';
+                Serial << _DEC(LOGDATA.fields.vReg) << endl;
             }
 
             ms = millis();                //flash LEDs while downloading data

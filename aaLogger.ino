@@ -29,3 +29,5 @@
  * San Francisco, California, 94105, USA.                               *
  *----------------------------------------------------------------------*/
 
+//set fuses:
+//avrdude -p m328p -U lfuse:w:0x7f:m -U hfuse:w:0xde:m -U efuse:w:0x06:m -v

@@ -87,6 +87,20 @@ int readVcc(void)
     return 1126400L / ADC;                    //calculate AVcc in mV (1.1 * 1000 * 1024)
 }
 
+//read battery voltage using ADC6, ADC7 and voltage divider
+//resistors R4 and R5 form the voltage divider
+#define R4 47500            //ohms
+#define R5 10000            //ohms
+int readBattery(void)
+{
+    long adc6, adc7;
+    
+    analogReference(INTERNAL);
+    adc6 = analogRead(6);
+    adc7 = analogRead(7);
+    return ((adc7 - adc6) * (R4 + R5) / R5 + adc6) * 1100 / 1024;
+}
+
 #if DEBUG_MODE == 1
 /*----------------------------------------------------------------------*
  * Dump EEPROM starting at addr for nBytes.                             *
@@ -123,10 +137,10 @@ void createData(int nrec)
     
     for (i=0; i<nrec; i++) {
         LOGDATA.fields.timestamp = rtcTime;
-        LOGDATA.fields.sensorTemp = i;
-        LOGDATA.fields.rtcTemp = i;
-        LOGDATA.fields.batteryVoltage = i;
-        LOGDATA.fields.regulatorVoltage = i;
+        LOGDATA.fields.tempSensor = i;
+        LOGDATA.fields.tempRTC = i;
+        LOGDATA.fields.vBat2 = i;
+        LOGDATA.fields.vReg = i;
         if (!LOGDATA.write()) {
             Serial << F("write fail in createData") << endl;
             STATE = POWER_DOWN;
