@@ -14,7 +14,6 @@
 #define GRN_LED 8
 #define SENSOR_POWER 9                //drives the mosfet to apply power to the sensors
 #define DS18B20_DQ 11                 //DS18B20 data pin
-#define LDR1 A0                       //CdS photocell
 
 //state, switch & LED timing
 #define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode
@@ -35,6 +34,7 @@
 #define SOFTWARE_VERSION 1
 #define BAUD_RATE 57600               //speed for serial interface, must be <= 57600 with 8MHz system clock
 #define RTC_RAM_STATUS 0x14           //address in the RTC SRAM to keep log status
+#define LOG_INT_SECS (60 * LOG_INTERVAL)    //log interval in seconds
 
 #endif
 

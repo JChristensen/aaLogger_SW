@@ -175,10 +175,14 @@ boolean logData::readLogStatus(boolean printStatus)
     if (printStatus) {
         pctAvail = _nRec * 10000UL / _maxRec;
         pctAvail = (10000UL - pctAvail + 5 ) / 10;
-        Serial << _DEC(_eepromCap >> 10) << F("kB EEPROM, ");
-        Serial << _DEC(pctAvail / 10) << '.' << (pctAvail % 10) << F("% available.") << endl;
-        Serial << _DEC(_nRec) << F(" Record") << (_nRec==1 ? "" : "s");
-        Serial << F(" logged, Record size ") << _DEC(_recSize) << F(" bytes, ");
+        Serial << endl << _DEC(_eepromCap >> 10) << F("kB EEPROM, ");
+        Serial << _DEC(_nRec) << F(" Record") << (_nRec==1 ? "" : "s") << F(" logged, ");
+        Serial << _DEC(pctAvail / 10) << '.' << (pctAvail % 10) << F("% Available.") << endl;
+        Serial << F("Log interval ");
+        printI00(hour(LOG_INT_SECS), ':');
+        printI00(minute(LOG_INT_SECS), ':');
+        printI00(second(LOG_INT_SECS), ',');
+        Serial << F(" Record size ") << _DEC(_recSize) << F(" bytes, ");
         if (!_wrapMode) Serial << F("NO-");
         Serial << F("WRAP mode.") << endl;
     }

@@ -23,8 +23,8 @@ TimeChangeRule MDT = {"MDT", Second, Sun, Mar, 2, -360};    //Daylight time = UT
 TimeChangeRule MST = {"MST", First, Sun, Nov, 2, -420};     //Standard time = UTC - 7 hours
 TimeChangeRule PDT = {"PDT", Second, Sun, Mar, 2, -420};    //Daylight time = UTC - 7 hours
 TimeChangeRule PST = {"PST", First, Sun, Nov, 2, -480};     //Standard time = UTC - 8 hours
-Timezone myTZ(EDT, EST);                                    //use the time change rules for your time zone (or declare new ones)
-TimeChangeRule *tcr;                  //pointer to the time change rule, use to get TZ abbrev
+Timezone myTZ(EDT, EST);    //use the time change rules for your time zone (or declare new ones)
+TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
 
 Button btnStart(START_BUTTON, true, true, DEBOUNCE_MS);
 Button btnDownload(DWNLD_BUTTON, true, true, DEBOUNCE_MS);
@@ -82,8 +82,7 @@ void setup(void)
 
 void loop(void)
 {
-    uint8_t curMin, alarmMin;
-    time_t rtcTime, utc, local;
+    time_t rtcTime, utc, local, alarmTime;
     static boolean redLedState, grnLedState;
     static unsigned long ms, msLast;
     static unsigned long msStateTime;        //time spent in a particular state
@@ -134,15 +133,14 @@ void loop(void)
                     delay(BLIP_ON);
                 }
                 
-                //calculate the minute for the first alarm
+                //calculate the first alarm
                 rtcTime = RTC.get();
-                curMin = minute(rtcTime);
-                alarmMin = (curMin - curMin % LOG_INTERVAL + LOG_INTERVAL) % 60;
+                alarmTime = rtcTime + LOG_INT_SECS - rtcTime % LOG_INT_SECS;
             
-                //set the alarm
-                RTC.setAlarm( ALM2_MATCH_MINUTES, alarmMin, 0, 0);    //set RTC alarm 2 to match on minutes
-                RTC.alarm(ALARM_2);                   //clear RTC interrupt flag
-                RTC.alarmInterrupt(ALARM_2, true);    //enable alarm 2 interrupts
+                //set RTC alarm to match on hours, minutes, seconds
+                RTC.setAlarm(ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
+                RTC.alarm(ALARM_1);                   //clear RTC interrupt flag
+                RTC.alarmInterrupt(ALARM_1, true);    //enable alarm interrupts
                 
                 EICRA = _BV(ISC11);               //interrupt on falling edge
                 EIFR = _BV(INTF1);                //clear the interrupt flag (setting ISCnn can cause an interrupt)
@@ -234,8 +232,7 @@ void loop(void)
 //block (3) is optional and can be deleted if desired, doing so will save a little run time and therefore power.
 void logSensorData(void)
 {
-    time_t rtcTime;
-    uint8_t curMin, alarmMin;
+    time_t rtcTime, alarmTime;
     int tempRTC;
     //int tempSensor;                         //sensor temperature (fahrenheit times 10)
     //boolean validTemp;
@@ -270,13 +267,10 @@ void logSensorData(void)
         Serial << vccBattery << F(", ") << vccRegulator << endl;
     }
 
-    //calculate the minute for the next alarm
-    curMin = minute(rtcTime);
-    alarmMin = (curMin + LOG_INTERVAL) % 60;
-    
-    //set the alarm
-    RTC.setAlarm( ALM2_MATCH_MINUTES, alarmMin, 0, 0);
-    RTC.alarm(ALARM_2);               //clear RTC interrupt flag
+    //calculate and set the next alarm
+    alarmTime = rtcTime + LOG_INT_SECS;
+    RTC.setAlarm(ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
+    RTC.alarm(ALARM_1);               //clear RTC interrupt flag
 
     //blink LED to indicate record logged
     if (nLogBlink) {
@@ -303,9 +297,9 @@ void gotoSleep(boolean enableRegulator)
     sleep_enable();
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     if (!enableRegulator) {
-		digitalWrite(SENSOR_POWER, LOW);   //sensor power off
-		setSystemClock(CLOCK_1MHZ);
-	}
+        digitalWrite(SENSOR_POWER, LOW);   //sensor power off
+        setSystemClock(CLOCK_1MHZ);
+    }
     adcsra = ADCSRA;               //save the ADC Control and Status Register A
     ADCSRA = 0;                    //disable ADC
     //disable brown-out detector while MCU sleeps, must sleep within four clock cycles
