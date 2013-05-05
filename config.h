@@ -7,11 +7,11 @@
 #ifndef config_h
 #define config_h
 
-#define LOG_INTERVAL 1    //logging interval in minutes, must be > 0
-#define WRAP_MODE false   //true to overwrite oldest data once EEPROM is full, false to stop logging when EEPROM full
-#define NBR_EEPROM 2      //number of EEPROM devices on the I2C bus
-#define EEPROM_SIZE 256   //capacity of a SINGLE EEPROM device in KILOBYTES
-#define EEPROM_PAGE 256   //EEPROM page size in BYTES
+#define LOG_INTERVAL 60        //logging interval in seconds, must be > 0
+#define WRAP_MODE false        //true to overwrite oldest data once EEPROM is full, false to stop logging when EEPROM full
+#define NBR_EEPROM 2           //NUMBER of EEPROM devices on the I2C bus
+#define EEPROM_SIZE 256        //capacity of a SINGLE EEPROM device in KILOBYTES
+#define EEPROM_PAGE 256        //EEPROM page size in BYTES
 
 /*----------------------------------------------------------------------*
  * The struct below defines the log data. When modifying the struct,    *

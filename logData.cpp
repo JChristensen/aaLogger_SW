@@ -64,17 +64,21 @@ boolean logData::readNext(void)
 }
 
 //write a log record into the next eeprom slot.
-//returns false if eeprom is full and wrap mode is off,
-//or if a write error occurs.
-boolean logData::write(void)
+//returns zero if successful,
+//returns EEPROM_ADDR_ERR if eeprom is full and wrap mode is off,
+//returns status from Wire library or extEEPROM library if other errors occur.
+byte logData::write(void)
 {
+    byte stat;
+    
     if (_wrapMode) {
         if (_nRec > 0) {                    //writing the first record is a special case, don't need to move pointers
             _lastAddr += _recSize;
             if (_lastAddr > _topAddr) _lastAddr = 0;
         }
-        if ( EEEP.write(_lastAddr, LOGDATA.bytes, _recSize) != 0 )      //write the record
-            return false;                                               //something wrong, probably an I2C error
+        stat = EEEP.write(_lastAddr, LOGDATA.bytes, _recSize);    //write the record
+        if (stat != 0)
+            return stat;                                          //something wrong, return the error status
         else {
             if (_nRec >= _maxRec) {         //eeprom full?
                 _firstAddr += _recSize;     //yes, make room
@@ -83,22 +87,23 @@ boolean logData::write(void)
             else
                 ++_nRec;                    //no, keep counting
             writeLogStatus(false);
-            return true;
+            return stat;
         }
     }
     else {
         if (_nRec > 0) {                    //first rec is special case
             if (_nRec >= _maxRec)           //have room?
-                return false;               //no
+                return EEPROM_FULL_ERR;     //no
             else
                 _lastAddr += _recSize;
         }
-        if ( EEEP.write(_lastAddr, LOGDATA.bytes, _recSize) != 0 )      //write the record
-            return false;                                               //something wrong, probably an I2C error
+        stat = EEEP.write(_lastAddr, LOGDATA.bytes, _recSize);    //write the record
+        if (stat != 0)
+            return stat;                                          //something wrong, return the error status
         else {
             ++_nRec;
             writeLogStatus(false);
-            return true;
+            return stat;
         }
     }
 }
@@ -141,7 +146,7 @@ void logData::download(Timezone *tz)
         Serial << F("*EOF ") << _DEC(nRec) << F(" Record") << (_nRec==1 ? "" : "s") << '.' << endl;
     }
     else {
-        Serial << F("NO DATA LOGGED") << endl;
+        Serial << endl << F("NO DATA LOGGED") << endl;
     }
 }
 
@@ -179,9 +184,9 @@ boolean logData::readLogStatus(boolean printStatus)
         Serial << _DEC(_nRec) << F(" Record") << (_nRec==1 ? "" : "s") << F(" logged, ");
         Serial << _DEC(pctAvail / 10) << '.' << (pctAvail % 10) << F("% Available.") << endl;
         Serial << F("Log interval ");
-        printI00(hour(LOG_INT_SECS), ':');
-        printI00(minute(LOG_INT_SECS), ':');
-        printI00(second(LOG_INT_SECS), ',');
+        printI00(hour(LOG_INTERVAL), ':');
+        printI00(minute(LOG_INTERVAL), ':');
+        printI00(second(LOG_INTERVAL), ',');
         Serial << F(" Record size ") << _DEC(_recSize) << F(" bytes, ");
         if (!_wrapMode) Serial << F("NO-");
         Serial << F("WRAP mode.") << endl;

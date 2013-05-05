@@ -17,12 +17,15 @@
 #include "defs.h"
 #include "config.h"
 
+//EEPROM full error, returned by write() if not in wrap mode and EEPROM is full
+#define EEPROM_FULL_ERR 8
+
 class logData
 {
     public:
         logData(unsigned long eepromCapacity, boolean wrapMode);
         void initialize(void);
-        boolean write(void);
+        byte write(void);
         void download(Timezone *tz);
         boolean readLogStatus(boolean printStatus);
         boolean configChanged(boolean printStatus);

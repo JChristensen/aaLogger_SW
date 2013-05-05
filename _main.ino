@@ -135,7 +135,7 @@ void loop(void)
                 
                 //calculate the first alarm
                 rtcTime = RTC.get();
-                alarmTime = rtcTime + LOG_INT_SECS - rtcTime % LOG_INT_SECS;
+                alarmTime = rtcTime + (LOG_INTERVAL) - rtcTime % (LOG_INTERVAL);
             
                 //set RTC alarm to match on hours, minutes, seconds
                 RTC.setAlarm(ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
@@ -234,6 +234,7 @@ void logSensorData(void)
 {
     time_t rtcTime, alarmTime;
     int tempRTC;
+    byte stat;
     //int tempSensor;                         //sensor temperature (fahrenheit times 10)
     //boolean validTemp;
 
@@ -254,8 +255,19 @@ void logSensorData(void)
         LOGDATA.fields.vReg = vccRegulator;
     }
 
-    if (!LOGDATA.write()) {
+    stat = LOGDATA.write();
+    if (stat == EEPROM_FULL_ERR) {
         Serial << F("EEPROM FULL") << endl;
+        STATE = POWER_DOWN;
+        return;
+    }
+    else if (stat == EEPROM_ADDR_ERR) {
+        Serial << F("EEPROM ADDRESS ERROR") << endl;
+        STATE = POWER_DOWN;
+        return;
+    }
+    else if (stat != 0) {
+        Serial << F("EEPROM WRITE ERROR ") << _DEC(stat) << endl;
         STATE = POWER_DOWN;
         return;
     }
@@ -268,7 +280,7 @@ void logSensorData(void)
     }
 
     //calculate and set the next alarm
-    alarmTime = rtcTime + LOG_INT_SECS;
+    alarmTime = rtcTime + (LOG_INTERVAL);
     RTC.setAlarm(ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
     RTC.alarm(ALARM_1);               //clear RTC interrupt flag
 
