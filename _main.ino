@@ -67,7 +67,7 @@ void setup(void)
         pinMode(i, pinModes[i]);
     }
     peripPower(true);                 //peripheral power on
-    digitalWrite(SENSOR_POWER, LOW);  //sensor power off
+    PORTB &= ~_BV(PORTB1);            //sensor power off
     setSystemClock(CLOCK_8MHZ);
     Serial.begin(BAUD_RATE);
     
@@ -235,22 +235,24 @@ void logSensorData(void)
     time_t rtcTime, alarmTime;
     int tempRTC;
     byte stat;
-    //int tempSensor;                         //sensor temperature (fahrenheit times 10)
-    //boolean validTemp;
+    int tempDS;                         //DS18B20 sensor temperature (fahrenheit times 10)
+    int ldr;
 
     rtcTime = RTC.get();
 
     { /*---- (1) READ SENSORS ----*/
         tempRTC = RTC.temperature() * 9 / 2 + 320;
-        //digitalWrite(SENSOR_POWER, HIGH);
-        //validTemp = readDS18B20(&tempSensor);
-        //digitalWrite(SENSOR_POWER, LOW);
+        PORTB |= _BV(PORTB1);                           //sensor power on
+        if (!readDS18B20(&tempDS)) tempDS = -9999;      //use -999.9F to indicate CRC error
+        ldr = analogRead(LDR);
+        PORTB &= ~_BV(PORTB1);                          //sensor power off
     }
 
     { /*---- (2) SAVE SENSOR DATA ----*/
         LOGDATA.fields.timestamp = rtcTime;
-        //LOGDATA.fields.tempRTC = tempSensor;
         LOGDATA.fields.tempRTC = tempRTC;
+        LOGDATA.fields.tempDS = tempDS;
+        LOGDATA.fields.ldr = ldr;
         LOGDATA.fields.vBat = vccBattery;
         LOGDATA.fields.vReg = vccRegulator;
     }
@@ -274,9 +276,9 @@ void logSensorData(void)
 
     { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
         printTime(rtcTime); printDate(rtcTime);
-        //if (validTemp) Serial << F(", ") << tempSensor;
-        Serial << F(", ") << tempRTC << F(", ");
-        Serial << vccBattery << F(", ") << vccRegulator << endl;
+        Serial << F(", ") << tempRTC;
+        Serial << F(", ") << tempDS <<  F(", ") << ldr;
+        Serial  << F(", ") << vccBattery << F(", ") << vccRegulator << endl;
     }
 
     //calculate and set the next alarm
@@ -308,7 +310,7 @@ void gotoSleep(boolean enableRegulator)
     sleep_enable();
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     if (!enableRegulator) {
-        digitalWrite(SENSOR_POWER, LOW);   //sensor power off
+        PORTB &= ~_BV(PORTB1);         //sensor power off
         setSystemClock(CLOCK_1MHZ);
     }
     adcsra = ADCSRA;               //save the ADC Control and Status Register A

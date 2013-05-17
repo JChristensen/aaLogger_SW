@@ -130,6 +130,8 @@ void logData::download(Timezone *tz)
                 print8601((*tz).toLocal(LOGDATA.fields.timestamp, &tcr));
                 Serial << tcr -> abbrev << ',';
                 Serial << _DEC(LOGDATA.fields.tempRTC) << ',';
+                Serial << _DEC(LOGDATA.fields.tempDS) << ',';
+                Serial << _DEC(LOGDATA.fields.ldr) << ',';
                 Serial << _DEC(LOGDATA.fields.vBat) << ',';
                 Serial << _DEC(LOGDATA.fields.vReg) << endl;
             }

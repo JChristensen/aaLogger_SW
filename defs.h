@@ -1,19 +1,21 @@
 /*----------------------------------------------------------------------*
- * defs.h -- system parameters. these should not normally be changed.   *
+ * defs.h -- system parameters. these should not normally be changed,   *
+ * except as sensors are added, the pins should be defined here.        *
  *----------------------------------------------------------------------*/
 
 #ifndef defs_h
 #define defs_h
 
 //MCU pin assignments
-#define PERIP_POWER 2                 //RTC and EEPROM power is supplied from this pin
+#define PERIP_POWER 2                 //RTC and EEPROM power is supplied from this pin (PD2)
 #define BOOST_REGULATOR 4             //high enables the regulator, low passes battery voltage through
 #define DWNLD_BUTTON 5
 #define START_BUTTON 6
 #define RED_LED 7
 #define GRN_LED 8
-#define SENSOR_POWER 9                //drives the mosfet to apply power to the sensors
+#define SENSOR_POWER 9                //drives the mosfet to apply power to the sensors (PB1)
 #define DS18B20_DQ 11                 //DS18B20 data pin
+#define LDR 0                         //CdS LDR on ADC channel 0
 
 //state, switch & LED timing
 #define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode
