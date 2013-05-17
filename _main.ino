@@ -66,7 +66,7 @@ void setup(void)
     for (uint8_t i=0; i<sizeof(pinModes); i++) {    //configure pins
         pinMode(i, pinModes[i]);
     }
-    digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
+    peripPower(true);                 //peripheral power on
     digitalWrite(SENSOR_POWER, LOW);  //sensor power off
     setSystemClock(CLOCK_8MHZ);
     Serial.begin(BAUD_RATE);
@@ -152,7 +152,7 @@ void loop(void)
             }
             
             //run the LED
-            if ((redLedState && ms - msLast > BLIP_ON) || (!redLedState && ms - msLast > BLIP_OFF)) {
+            if ((redLedState && ms - msLast >= BLIP_ON) || (!redLedState && ms - msLast >= BLIP_OFF)) {
                 msLast = ms;
                 digitalWrite(RED_LED, redLedState = !redLedState);
             }
@@ -218,7 +218,7 @@ void loop(void)
             }
 
             //run the LED
-            if ((grnLedState && ms - msLast > BLIP_ON) || (!redLedState && ms - msLast > BLIP_OFF)) {
+            if ((grnLedState && ms - msLast >= BLIP_ON) || (!redLedState && ms - msLast >= BLIP_OFF)) {
                 msLast = ms;
                 digitalWrite(GRN_LED, grnLedState = !grnLedState);
             }
@@ -300,8 +300,7 @@ void gotoSleep(boolean enableRegulator)
  
     Serial.flush();
     Serial.end();
-    digitalWrite(PERIP_POWER, LOW);    //peripheral power off
-    pinMode(PERIP_POWER, INPUT);
+    peripPower(false);                 //peripheral power off
     digitalWrite(RED_LED, LOW);        //LEDs off
     digitalWrite(GRN_LED, LOW);
     pinMode(SCL, INPUT);               //tri-state the i2c bus   
@@ -326,9 +325,8 @@ void gotoSleep(boolean enableRegulator)
     if (!enableRegulator) setSystemClock(CLOCK_8MHZ);
     ADCSRA = adcsra;               //restore ADCSRA    
     Serial.begin(BAUD_RATE);
-    pinMode(PERIP_POWER, OUTPUT);
-    digitalWrite(PERIP_POWER, HIGH);  //peripheral power on
-    delay(1);                         //a little ramp-up time
+    peripPower(true);              //peripheral power on
+    delay(1);                      //a little ramp-up time
 }
 
 //interrupt from the RTC alarm. don't need to do anything, it's just to wake the MCU.
@@ -349,7 +347,7 @@ void setSystemClock(uint8_t clkpr)
     }
 
     cli();
-    CLKPR = _BV(CLKPCE);        //set the clock prescaler change enable bit
+    CLKPR = _BV(CLKPCE);                     //set the clock prescaler change enable bit
     CLKPR = clkpr;
     sei();
     
@@ -360,3 +358,17 @@ void setSystemClock(uint8_t clkpr)
     }
 }
 
+//turn peripheral (rtc, eeprom) power on or off,
+//using direct port manipulation for fastest transition.
+//The PD2 pin powers the peripherals (Arduino pin D2).
+void peripPower(boolean enable)
+{
+    if (enable) {                   //turn power on
+        PORTD |= _BV(PORTD2);       //input pullup is transition state
+        DDRD |= _BV(DDD2);          //output high
+    }
+    else {                          //turn power off
+        DDRD &= ~_BV(DDD2);         //input pullup is transistion state
+        PORTD &= ~_BV(PORTD2);      //turn off pullup for tri-state/hi-z
+    }
+}
