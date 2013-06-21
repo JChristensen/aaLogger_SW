@@ -368,7 +368,7 @@ void peripPower(boolean enable)
         DDRD |= _BV(DDD2);          //output high
     }
     else {                          //turn power off
-        DDRD &= ~_BV(DDD2);         //input pullup is transistion state
+        DDRD &= ~_BV(DDD2);         //input pullup is transition state
         PORTD &= ~_BV(PORTD2);      //turn off pullup for tri-state/hi-z
     }
 }
