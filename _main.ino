@@ -3,6 +3,7 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <Button.h>           //http://github.com/JChristensen/Button
+#include <DHT.h>
 #include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
 #include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
 #include <OneWire.h>          //http://www.pjrc.com/teensy/td_libs_OneWire.html
@@ -234,9 +235,11 @@ void logSensorData(void)
 {
     time_t rtcTime, alarmTime;
     int tempRTC;
-    byte stat;
     int tempDS;                         //DS18B20 sensor temperature (fahrenheit times 10)
+    int tempDHT;
+    int rhDHT;
     int ldr;
+    byte stat;
 
     rtcTime = RTC.get();
 
@@ -245,6 +248,7 @@ void logSensorData(void)
         PORTB |= _BV(PORTB1);                           //sensor power on
         if (!readDS18B20(&tempDS)) tempDS = -9999;      //use -999.9F to indicate CRC error
         ldr = analogRead(LDR);
+        readDHT(&tempDHT, &rhDHT);
         PORTB &= ~_BV(PORTB1);                          //sensor power off
     }
 
@@ -252,6 +256,8 @@ void logSensorData(void)
         LOGDATA.fields.timestamp = rtcTime;
         LOGDATA.fields.tempRTC = tempRTC;
         LOGDATA.fields.tempDS = tempDS;
+        LOGDATA.fields.tempDHT = tempDHT;
+        LOGDATA.fields.rhDHT = rhDHT;
         LOGDATA.fields.ldr = ldr;
         LOGDATA.fields.vBat = vccBattery;
         LOGDATA.fields.vReg = vccRegulator;
@@ -277,8 +283,12 @@ void logSensorData(void)
     { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
         printTime(rtcTime); printDate(rtcTime);
         Serial << F(", ") << tempRTC;
-        Serial << F(", ") << tempDS <<  F(", ") << ldr;
-        Serial  << F(", ") << vccBattery << F(", ") << vccRegulator << endl;
+        Serial << F(", ") << tempDS;
+        Serial << F(", ") << tempDHT;
+        Serial << F(", ") << rhDHT;
+        Serial << F(", ") << ldr;
+        Serial << F(", ") << vccBattery;
+        Serial << F(", ") << vccRegulator << endl;
     }
 
     //calculate and set the next alarm

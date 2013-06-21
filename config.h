@@ -27,6 +27,8 @@ struct logData_t {
     unsigned long timestamp;
     int tempRTC;
     int tempDS;
+    int tempDHT;
+    int rhDHT;
     int ldr;
     int vBat;
     int vReg;
@@ -34,7 +36,7 @@ struct logData_t {
 };
 
 //this line defines the field names and is printed at the beginning of the data when downloading
-#define CSV_HEADER "utc,local,tz,tempRTC,tempDS,ldr,vBat,vReg"
+#define CSV_HEADER "utc,local,tz,tempRTC,tempDS,tempDHT,rhDHT,ldr,vBat,vReg"
 
 #endif
 

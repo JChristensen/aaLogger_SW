@@ -16,6 +16,7 @@
 #define SENSOR_POWER 9                //drives the mosfet to apply power to the sensors (PB1)
 #define DS18B20_DQ 11                 //DS18B20 data pin
 #define LDR 0                         //CdS LDR on ADC channel 0
+#define DHT22_PIN A0
 
 //state, switch & LED timing
 #define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode
@@ -36,6 +37,7 @@
 #define SOFTWARE_VERSION 1
 #define BAUD_RATE 57600               //speed for serial interface, must be <= 57600 with 8MHz system clock
 #define RTC_RAM_STATUS 0x14           //address in the RTC SRAM to keep log status
+#define DHT_TYPE DHT22                //DHT22 a.k.a. AM2302
 
 #endif
 
