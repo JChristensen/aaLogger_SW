@@ -3,24 +3,25 @@
 //calling readDS18B20(). The latter sleeps for one second while the DS18B20
 //does the conversion, readDHT() sleeps an additional second.
 
-DHT dht(DHT22_PIN, DHT_TYPE);
+DHT dht(DHT_PIN, DHT_TYPE, 3);              //count=3 for 8MHz MCU
 
 void readDHT(int *temp, int *rh)
 {
+    dht.begin();
     //sleep for another second so that the DHT has a total of two seconds
     wdtEnable();
     gotoSleep(true);
     wdtDisable();
-    
-    float h = dht.readHumidity();
-    float t = dht.readTemperature();
 
-    // check if returns are valid, if they are NaN (not a number) then something went wrong!
-    if ( isnan(t) || isnan(h) )
+    float t = dht.readTemperature(true);    //true --> fahrenheit
+    float h = dht.readHumidity();
+
+    if ( isnan(t) || isnan(h) ) {           //NaN indicates DHT read error
         *temp = *rh = -9999;
+    }
     else {
-        *temp = 10. * (t + 0.05);
-        *rh = 10. * (h + 0.05);
+        *temp = t * 10. + 0.5;
+        *rh = h * 10. + 0.5;
     }       
 }
 

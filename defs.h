@@ -16,7 +16,7 @@
 #define SENSOR_POWER 9                //drives the mosfet to apply power to the sensors (PB1)
 #define DS18B20_DQ 11                 //DS18B20 data pin
 #define LDR 0                         //CdS LDR on ADC channel 0
-#define DHT22_PIN A0
+#define DHT_PIN A3
 
 //state, switch & LED timing
 #define STATE_TIMEOUT 30              //POWER_DOWN after this many seconds in COMMAND or SET_TIME mode

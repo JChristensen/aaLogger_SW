@@ -53,13 +53,13 @@ void setup(void)
         OUTPUT,          //8    green LED
         OUTPUT,          //9    sensor power enable
         INPUT_PULLUP,    //10   [SS] unused
-        INPUT_PULLUP,    //11   [MOSI] unused
+        INPUT,           //11   [MOSI] DS18B20 with external pullup
         INPUT_PULLUP,    //12   [MISO] unused
         INPUT_PULLUP,    //13   [SCK] unused
         INPUT_PULLUP,    //A0   unused
         INPUT_PULLUP,    //A1   unused
         INPUT_PULLUP,    //A2   unused
-        INPUT_PULLUP,    //A3   unused
+        INPUT,           //A3   DHT22 with external pullup
         INPUT,           //A4   [SDA] external pullup on board
         INPUT            //A5   [SCL] external pullup on board
     };
