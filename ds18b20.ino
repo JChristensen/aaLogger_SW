@@ -37,8 +37,8 @@ boolean readDS18B20(int *tF10)
 // Convert 12-bit °C temp from DS18B20 to an integer which is °F * 10
 int toFahrenheit(byte tempMSB, byte tempLSB)
 {
-    int tC16;     //16 times the temperature in deg C (DS18B20 resolution is 1/16 °C)
-    int tF160;    //160 times the temp in deg F (but without the 32 deg offset)
+    long tC16;    //16 times the temperature in deg C (DS18B20 resolution is 1/16 °C)
+    long tF160;   //160 times the temp in deg F (but without the 32 deg offset)
     int tF10;     //10 times the temp in deg F
 
     tC16 = (tempMSB << 8) + tempLSB;
