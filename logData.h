@@ -69,6 +69,7 @@ class logData
 };
 
 extern logData LOGDATA;
+extern extEEPROM EEEP;
 
 #endif
 

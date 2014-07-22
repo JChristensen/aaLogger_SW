@@ -77,7 +77,7 @@ void setup(void)
     printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
     LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
-    TWBR = 2;    //sets I2C SCL to 400kHz SCL (assuming 8MHz system clock)
+    EEEP.begin(twiClock400kHz);
 }
 
 void loop(void)

@@ -4,8 +4,8 @@
 #include "logData.h"
 
 //instantiate the logData and extEEPROM objects
-logData LOGDATA = logData ( EEPROM_SIZE * NBR_EEPROM, WRAP_MODE );
-extEEPROM EEEP = extEEPROM ( EEPROM_SIZE, NBR_EEPROM, EEPROM_PAGE );
+logData LOGDATA( EEPROM_KBITS * NBR_EEPROM / 8, WRAP_MODE );
+extEEPROM EEEP( EEPROM_KBITS, NBR_EEPROM, EEPROM_PAGE );
 
 // the constructor specifies the total EEPROM capacity (all devices
 // combined) in kB, and whether wrap mode is enabled (wrap mode
