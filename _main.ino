@@ -57,8 +57,8 @@ void setup(void)
         INPUT_PULLUP,    //13   [SCK] unused
         INPUT_PULLUP,    //A0   unused
         INPUT_PULLUP,    //A1   unused
-        INPUT_PULLUP,    //A2   unused
-        INPUT_PULLUP,    //A3   unused
+        INPUT,           //A2   voltage input
+        INPUT,           //A3   voltage input
         INPUT,           //A4   [SDA] external pullup on board
         INPUT            //A5   [SCL] external pullup on board
     };
@@ -234,6 +234,7 @@ void logSensorData(void)
 {
     time_t rtcTime, alarmTime;
     int tempRTC;
+    int v2, v3;
     byte stat;
     //int tempSensor;                         //sensor temperature (fahrenheit times 10)
     //boolean validTemp;
@@ -241,10 +242,14 @@ void logSensorData(void)
     rtcTime = RTC.get();
 
     { /*---- (1) READ SENSORS ----*/
+        digitalWrite(SENSOR_POWER, HIGH);
         tempRTC = RTC.temperature() * 9 / 2 + 320;
-        //digitalWrite(SENSOR_POWER, HIGH);
+        v2 = analogRead(2);
+        v2 = analogRead(2);
+        v3 = analogRead(3);
+        v3 = analogRead(3);
         //validTemp = readDS18B20(&tempSensor);
-        //digitalWrite(SENSOR_POWER, LOW);
+        digitalWrite(SENSOR_POWER, LOW);
     }
 
     { /*---- (2) SAVE SENSOR DATA ----*/
@@ -253,6 +258,8 @@ void logSensorData(void)
         LOGDATA.fields.tempRTC = tempRTC;
         LOGDATA.fields.vBat = vccBattery;
         LOGDATA.fields.vReg = vccRegulator;
+        LOGDATA.fields.v2 = v2;
+        LOGDATA.fields.v3 = v3;
     }
 
     stat = LOGDATA.write();
@@ -276,7 +283,8 @@ void logSensorData(void)
         printTime(rtcTime); printDate(rtcTime);
         //if (validTemp) Serial << F(", ") << tempSensor;
         Serial << F(", ") << tempRTC << F(", ");
-        Serial << vccBattery << F(", ") << vccRegulator << endl;
+        Serial << vccBattery << F(", ") << vccRegulator << F(", ");
+        Serial << (long)v2 * vccRegulator / 1024 << F(", ") << (long)v3 * vccRegulator / 1024 << endl;
     }
 
     //calculate and set the next alarm
