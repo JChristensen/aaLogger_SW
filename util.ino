@@ -1,3 +1,6 @@
+//"Double-A Datalogger" by Jack Christensen is licensed under
+//CC BY-SA 4.0, http://creativecommons.org/licenses/by-sa/4.0/
+
 //util.ino - various utility functions
 
 //read 1.1V reference against AVcc

@@ -1,4 +1,7 @@
-//_main.ino - Double-A DataLogger main module
+//"Double-A Datalogger" by Jack Christensen is licensed under
+//CC BY-SA 4.0, http://creativecommons.org/licenses/by-sa/4.0/
+
+//_main.ino - Double-A Datalogger main module
 
 #include <avr/sleep.h>
 #include <avr/wdt.h>
@@ -23,7 +26,7 @@ TimeChangeRule MDT = {"MDT", Second, Sun, Mar, 2, -360};    //Daylight time = UT
 TimeChangeRule MST = {"MST", First, Sun, Nov, 2, -420};     //Standard time = UTC - 7 hours
 TimeChangeRule PDT = {"PDT", Second, Sun, Mar, 2, -420};    //Daylight time = UTC - 7 hours
 TimeChangeRule PST = {"PST", First, Sun, Nov, 2, -480};     //Standard time = UTC - 8 hours
-Timezone myTZ(EDT, EST);    //use the time change rules for your time zone (or declare new ones)
+Timezone myTZ(MDT, MST);    //use the time change rules for your time zone (or declare new ones)
 TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
 
 Button btnStart(START_BUTTON, true, true, DEBOUNCE_MS);
@@ -104,7 +107,7 @@ void loop(void)
                 STATE = SET_TIME;
                 digitalWrite(RED_LED, LOW);
                 digitalWrite(GRN_LED, grnLedState = HIGH);
-                Serial << endl << F("Enter Unix Epoch Time (UTC), e.g. from http://www.epochconverter.com/") << endl;
+                Serial << F("\nEnter UTC as yy,m,d,h,m,s, (24-hr clock)\n");
                 while (btnDownload.isPressed()) btnDownload.read();
                 msStateTime = ms;
             }
@@ -201,8 +204,17 @@ void loop(void)
             break;
             
         case SET_TIME:
-            if (Serial.available() >= 10) {
-                utc = Serial.parseInt();
+            //check for input to set the RTC, minimum length is 12, i.e. yy,m,d,h,m,s
+            if (Serial.available() >= 12) {
+                tmElements_t tm;
+                int y = Serial.parseInt();
+                tm.Year = y2kYearToTm(y);    //tmElements_t Year member is an offset from 1970
+                tm.Month = Serial.parseInt();
+                tm.Day = Serial.parseInt();
+                tm.Hour = Serial.parseInt();
+                tm.Minute = Serial.parseInt();
+                tm.Second = Serial.parseInt();
+                utc = makeTime(tm);
                 setTime(utc);
                 RTC.set(utc);
                 RTC.writeRTC(RTC_STATUS, 0x00);      //clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
@@ -211,6 +223,7 @@ void loop(void)
                 Serial << endl << F("Time set to: ") << endl;
                 printDateTime(utc, "UTC");
                 printDateTime(local, tcr -> abbrev);
+                while (Serial.available() > 0) Serial.read();    //dump any extraneous input
                 STATE = ENTER_COMMAND;
             }
             else if (ms - msStateTime >= STATE_TIMEOUT * 1000UL){
@@ -241,7 +254,8 @@ void logSensorData(void)
     rtcTime = RTC.get();
 
     { /*---- (1) READ SENSORS ----*/
-        tempRTC = RTC.temperature() * 9 / 2 + 320;
+        tempRTC = RTC.temperature() * 25;             //degrees C * 100
+        //tempRTC = RTC.temperature() * 9 / 2 + 320;    //degrees F * 10
         //digitalWrite(SENSOR_POWER, HIGH);
         //validTemp = readDS18B20(&tempSensor);
         //digitalWrite(SENSOR_POWER, LOW);

@@ -1,5 +1,5 @@
 /*----------------------------------------------------------------------*
- * Double-A DataLogger - A low-power Arduino-based data logger.         *
+ * Double-A Datalogger - A low-power Arduino-based data logger.         *
  * Jack Christensen 20Mar2013 v1                                        *
  *                                                                      *
  * This basic logging sketch logs the date/time, the temperature from   *
@@ -22,14 +22,14 @@
  * Uses an 8MHz crystal with CKDIV8 bit programmed, so the system clock *
  * is 1MHz after reset. This is to ensure the MCU is not overclocked    *
  * at low voltages when the boost regulator is disabled. Clock is       *
- * changed to 8MHz when the regulator is enabled.                       *
+ * changed to 8MHz when the regulator is enabled. Because of this,      *
+ * the board MUST be programmed via ICSP (no bootloader), and the code  *
+ * MUST be compiled for an 8MHz ATmega328P (the MCU runs at 8MHz most   *
+ * of the time, only switching to 1MHz just before sleeping).           *
  *                                                                      *
- * CC BY-SA                                                             *
- * This work is licensed under the Creative Commons Attribution-        *
- * ShareAlike 3.0 Unported License. To view a copy of this license,     *
- * visit http://creativecommons.org/licenses/by-sa/3.0/ or send a       *
- * letter to Creative Commons, 171 Second Street, Suite 300,            *
- * San Francisco, California, 94105, USA.                               *
+ * CC BY-SA 4.0                                                         *
+ * "Double-A Datalogger" by Jack Christensen is licensed under          *
+ * CC BY-SA 4.0, http://creativecommons.org/licenses/by-sa/4.0/         *
  *----------------------------------------------------------------------*/
 
 //set fuses:

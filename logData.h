@@ -1,3 +1,6 @@
+//"Double-A Datalogger" by Jack Christensen is licensed under
+//CC BY-SA 4.0, http://creativecommons.org/licenses/by-sa/4.0/
+
 //logData.h - A class to define the log data structure and
 //provide methods for managing it.
 
