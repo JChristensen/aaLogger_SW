@@ -1,3 +1,6 @@
+//"Double-A Datalogger" by Jack Christensen is licensed under
+//CC BY-SA 4.0, http://creativecommons.org/licenses/by-sa/4.0/
+
 /*----------------------------------------------------------------------*
  * config.h -- user-definable parameters                                *
  * define logging interval, eeprom characteristics and the log data     *
