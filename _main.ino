@@ -286,7 +286,7 @@ void logSensorData(void)
         printTime(rtcTime); printDate(rtcTime);
         //if (validTemp) Serial << F(", ") << tempSensor;
         Serial << F(", ") << tempRTC << F(", ");
-        Serial << vccBattery << F(", ") << vccRegulator << F(", ") << (long)v2 * vccRegulator / 1024 << F(", ");
+        Serial << vccBattery << F(", ") << vccRegulator << F(", ") << (long)v1 * vccRegulator / 1024 << F(", ");
         Serial << (long)v2 * vccRegulator / 1024 << F(", ") << (long)v3 * vccRegulator / 1024 << endl;
     }
 
