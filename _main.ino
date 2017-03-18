@@ -56,7 +56,7 @@ void setup(void)
         INPUT_PULLUP,    //12   [MISO] unused
         INPUT_PULLUP,    //13   [SCK] unused
         INPUT_PULLUP,    //A0   unused
-        INPUT_PULLUP,    //A1   unused
+        INPUT,           //A1   voltage input
         INPUT,           //A2   voltage input
         INPUT,           //A3   voltage input
         INPUT,           //A4   [SDA] external pullup on board
@@ -77,7 +77,7 @@ void setup(void)
     printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
     LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
-    EEEP.begin(twiClock400kHz);
+    EEEP.begin(extEEPROM::twiClock400kHz);
 }
 
 void loop(void)
@@ -234,7 +234,7 @@ void logSensorData(void)
 {
     time_t rtcTime, alarmTime;
     int tempRTC;
-    int v2, v3;
+    int v1, v2, v3;
     byte stat;
     //int tempSensor;                         //sensor temperature (fahrenheit times 10)
     //boolean validTemp;
@@ -244,6 +244,8 @@ void logSensorData(void)
     { /*---- (1) READ SENSORS ----*/
         digitalWrite(SENSOR_POWER, HIGH);
         tempRTC = RTC.temperature() * 9 / 2 + 320;
+        v1 = analogRead(1);
+        v1 = analogRead(1);
         v2 = analogRead(2);
         v2 = analogRead(2);
         v3 = analogRead(3);
@@ -258,6 +260,7 @@ void logSensorData(void)
         LOGDATA.fields.tempRTC = tempRTC;
         LOGDATA.fields.vBat = vccBattery;
         LOGDATA.fields.vReg = vccRegulator;
+        LOGDATA.fields.v1 = v1;
         LOGDATA.fields.v2 = v2;
         LOGDATA.fields.v3 = v3;
     }
@@ -283,7 +286,7 @@ void logSensorData(void)
         printTime(rtcTime); printDate(rtcTime);
         //if (validTemp) Serial << F(", ") << tempSensor;
         Serial << F(", ") << tempRTC << F(", ");
-        Serial << vccBattery << F(", ") << vccRegulator << F(", ");
+        Serial << vccBattery << F(", ") << vccRegulator << F(", ") << (long)v2 * vccRegulator / 1024 << F(", ");
         Serial << (long)v2 * vccRegulator / 1024 << F(", ") << (long)v3 * vccRegulator / 1024 << endl;
     }
 

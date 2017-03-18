@@ -132,6 +132,7 @@ void logData::download(Timezone *tz)
                 Serial << _DEC(LOGDATA.fields.tempRTC) << ',';
                 Serial << _DEC(LOGDATA.fields.vBat) << ',';
                 Serial << _DEC(LOGDATA.fields.vReg) << ',';
+                Serial << _DEC(LOGDATA.fields.v1) << ',';
                 Serial << _DEC(LOGDATA.fields.v2) << ',';
                 Serial << _DEC(LOGDATA.fields.v3) << endl;
             }
