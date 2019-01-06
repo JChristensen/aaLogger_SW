@@ -28,7 +28,7 @@ int readBattery(void)
 }
 
 //print date and time to Serial
-void printDateTime(time_t t, char *tz)
+void printDateTime(time_t t, const char *tz)
 {
     printDate(t);
     Serial << ' ';
@@ -63,4 +63,3 @@ void printI00(int val, char delim)
     if (delim > 0) Serial << delim;
     return;
 }
-

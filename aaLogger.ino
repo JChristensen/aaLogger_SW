@@ -37,14 +37,14 @@
 
 #include <avr/sleep.h>
 #include <avr/wdt.h>
-#include <Button.h>           //http://github.com/JChristensen/Button
-#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
-#include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
-#include <OneWire.h>          //http://www.pjrc.com/teensy/td_libs_OneWire.html
-#include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
-#include <Time.h>             //http://playground.arduino.cc/Code/Time
-#include <Timezone.h>         //http://github.com/JChristensen/Timezone
-#include <Wire.h>             //http://arduino.cc/en/Reference/Wire
+#include <JC_Button.h>          // https://github.com/JChristensen/JC_Button
+#include <DS3232RTC.h>          // https://github.com/JChristensen/DS3232RTC
+#include <extEEPROM.h>          // https://github.com/JChristensen/extEEPROM
+#include <OneWire.h>            // https://www.pjrc.com/teensy/td_libs_OneWire.html
+#include <Streaming.h>          // http://arduiniana.org/libraries/streaming/
+#include <Time.h>               // https://playground.arduino.cc/Code/Time
+#include <Timezone.h>           // https://github.com/JChristensen/Timezone
+#include <Wire.h>               // https://arduino.cc/en/Reference/Wire
 #include "config.h"
 #include "defs.h"
 #include "logData.h"
@@ -61,8 +61,8 @@ TimeChangeRule PST = {"PST", First, Sun, Nov, 2, -480};     //Standard time = UT
 Timezone myTZ(EDT, EST);    //use the time change rules for your time zone (or declare new ones)
 TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
 
-Button btnStart(START_BUTTON, true, true, DEBOUNCE_MS);
-Button btnDownload(DWNLD_BUTTON, true, true, DEBOUNCE_MS);
+Button btnStart(START_BUTTON);
+Button btnDownload(DWNLD_BUTTON);
 
 //global variables
 int vBat, vccBattery, vccRegulator;   //battery and regulator voltages, read in setSystemClock() function
@@ -101,6 +101,8 @@ void setup(void)
     for (uint8_t i=0; i<sizeof(pinModes); i++) {    //configure pins
         pinMode(i, pinModes[i]);
     }
+    btnStart.begin();
+    btnDownload.begin();
     peripPower(true);                 //peripheral power on
     digitalWrite(SENSOR_POWER, LOW);  //sensor power off
     setSystemClock(CLOCK_8MHZ);
@@ -240,7 +242,8 @@ void loop(void)
                 utc = Serial.parseInt();
                 setTime(utc);
                 RTC.set(utc);
-                RTC.writeRTC(RTC_STATUS, 0x00);      //clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
+                const uint8_t RTC_STATUS(0x0F);     // DS3232 status register
+                RTC.writeRTC(RTC_STATUS, 0x00);     // clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
                 local = myTZ.toLocal(utc, &tcr);
                 while (Serial.read() >= 0);
                 Serial << endl << F("Time set to: ") << endl;
