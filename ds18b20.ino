@@ -6,7 +6,7 @@ boolean readDS18B20(int *tF10)
 {
     OneWire ds(DS18B20_DQ);
     uint8_t dsData[12];
-    
+
     //start temperature conversion
     ds.reset();
     ds.skip();
@@ -50,7 +50,7 @@ int toFahrenheit(byte tempMSB, byte tempLSB)
 }
 
 //enable the wdt for 1 sec interrupt
-void wdtEnable(void)
+void wdtEnable()
 {
     cli();
     wdt_reset();
@@ -61,7 +61,7 @@ void wdtEnable(void)
 }
 
 //disable the wdt
-void wdtDisable(void)
+void wdtDisable()
 {
     cli();
     wdt_reset();
@@ -72,7 +72,4 @@ void wdtDisable(void)
 }
 
 //nothing to do here, the WDT interrupt just wakes the MCU after the DS18B20 has completed conversion.
-ISR(WDT_vect)
-{
-}
-
+ISR(WDT_vect) {}

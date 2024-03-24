@@ -23,7 +23,7 @@ logData::logData(unsigned long eepromCapacity, boolean wrapMode)
 }
 
 //reset EEPROM status to empty
-void logData::initialize(void)
+void logData::initialize()
 {
     _firstAddr = 0;
     _lastAddr = 0;
@@ -33,7 +33,7 @@ void logData::initialize(void)
 
 //read the first log record.
 //returns false if there is no data logged.
-boolean logData::readFirst(void)
+boolean logData::readFirst()
 {
     if (_nRec == 0)
         return false;
@@ -43,10 +43,10 @@ boolean logData::readFirst(void)
         return true;
     }
 }
-        
+
 //read the next log record.
 //returns false if there is no more data to be read.
-boolean logData::readNext(void)
+boolean logData::readNext()
 {
     if (_readAddr == _lastAddr)
         return false;
@@ -67,10 +67,10 @@ boolean logData::readNext(void)
 //returns zero if successful,
 //returns EEPROM_ADDR_ERR if eeprom is full and wrap mode is off,
 //returns status from Wire library or extEEPROM library if other errors occur.
-byte logData::write(void)
+byte logData::write()
 {
     byte stat;
-    
+
     if (_wrapMode) {
         if (_nRec > 0) {                    //writing the first record is a special case, don't need to move pointers
             _lastAddr += _recSize;
@@ -118,7 +118,7 @@ void logData::download(Timezone *tz)
     unsigned long nRec = 0;
     boolean ledState;
     TimeChangeRule *tcr;                  //pointer to the time change rule, use to get TZ abbrev
-    
+
     if (readFirst()) {
         Serial << F(CSV_HEADER) << endl;
 
@@ -167,7 +167,7 @@ void logData::writeLogStatus(boolean writeConfig)
     logStatus.firstAddr = _firstAddr;          //current status
     logStatus.lastAddr = _lastAddr;
     logStatus.nRec = _nRec;
-    RTC.writeRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
+    myRTC.writeRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
 }
 
 //read and optionally print the log status (pointer to next record, etc.) from the RTC's SRAM.
@@ -175,8 +175,8 @@ void logData::writeLogStatus(boolean writeConfig)
 boolean logData::readLogStatus(boolean printStatus)
 {
     unsigned long pctAvail;
-    
-    RTC.readRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
+
+    myRTC.readRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
     _firstAddr = logStatus.firstAddr;
     _lastAddr = logStatus.lastAddr;
     _nRec = logStatus.nRec;
@@ -233,4 +233,3 @@ void logData::printI00(int val, char delim)
     if (delim > 0) Serial << delim;
     return;
 }
-

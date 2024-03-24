@@ -2,7 +2,7 @@
 
 //read 1.1V reference against AVcc
 //from http://code.google.com/p/tinkerit/wiki/SecretVoltmeter
-int readVcc(void)
+int readVcc()
 {
     ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
     delay(2);                                 //Vref settling time
@@ -15,12 +15,12 @@ int readVcc(void)
 //resistors R4 and R5 form the voltage divider.
 //NOTE: When switching from the DEFAULT to the INTERNAL 1.1V ADC reference, it can take
 //5-10ms for Aref to stabilize because it is held up by a 100nF capacitor on the board.
-int readBattery(void)
+int readBattery()
 {
     const int R4 = 47500;    //ohms
     const int R5 = 10000;    //ohms
     long adc6, adc7;
-    
+
     analogReference(INTERNAL);
     adc6 = analogRead(6);
     adc7 = analogRead(7);

@@ -4,16 +4,16 @@
 #ifndef logData_h
 #define logData_h
 #if ARDUINO >= 100
-#include <Arduino.h> 
+#include <Arduino.h>
 #else
-#include <WProgram.h> 
+#include <WProgram.h>
 #endif
 
-#include <DS3232RTC.h>        //http://github.com/JChristensen/DS3232RTC
-#include <extEEPROM.h>        //http://github.com/JChristensen/extEEPROM
-#include <Streaming.h>        //http://arduiniana.org/libraries/streaming/
-#include <Time.h>             //http://playground.arduino.cc/Code/Time
-#include <Timezone.h>         //http://github.com/JChristensen/Timezone
+#include <DS3232RTC.h>      // http://github.com/JChristensen/DS3232RTC
+#include <extEEPROM.h>      // http://github.com/JChristensen/extEEPROM
+#include <Streaming.h>      // https://github.com/janelia-arduino/Streaming
+#include <TimeLib.h>        // http://playground.arduino.cc/Code/Time
+#include <Timezone.h>       // http://github.com/JChristensen/Timezone
 #include "defs.h"
 #include "config.h"
 
@@ -24,8 +24,8 @@ class logData
 {
     public:
         logData(unsigned long eepromCapacity, boolean wrapMode);
-        void initialize(void);
-        byte write(void);
+        void initialize();
+        byte write();
         void download(Timezone *tz);
         boolean readLogStatus(boolean printStatus);
         boolean configChanged(boolean printStatus);
@@ -34,10 +34,10 @@ class logData
             logData_t fields;
             byte bytes[sizeof(logData_t)];
         };
-        
+
     private:
-        boolean readFirst(void);
-        boolean readNext(void);
+        boolean readFirst();
+        boolean readNext();
         void writeLogStatus(boolean writeConfig);
         void print8601(time_t t);
         void printI00(int val, char delim);
@@ -52,7 +52,7 @@ class logData
         boolean _wrapMode;                //true: continue logging when EEPROM is full, next record replacing the oldest
                                           //false: logging stops when EEPROM is full
         unsigned long _readAddr;          //pointer to read records
-    
+
         union {                           //logging status data persisted in RTC SRAM (battery-backed)
             struct {
                 unsigned long firstAddr;  //copies of variables above
@@ -70,6 +70,6 @@ class logData
 
 extern logData LOGDATA;
 extern extEEPROM EEEP;
+extern DS3232RTC myRTC;
 
 #endif
-

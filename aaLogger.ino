@@ -41,8 +41,8 @@
 #include <DS3232RTC.h>          // https://github.com/JChristensen/DS3232RTC
 #include <extEEPROM.h>          // https://github.com/JChristensen/extEEPROM
 #include <OneWire.h>            // https://www.pjrc.com/teensy/td_libs_OneWire.html
-#include <Streaming.h>          // http://arduiniana.org/libraries/streaming/
-#include <Time.h>               // https://playground.arduino.cc/Code/Time
+#include <Streaming.h>          // https://github.com/janelia-arduino/Streaming
+#include <TimeLib.h>            // https://playground.arduino.cc/Code/Time
 #include <Timezone.h>           // https://github.com/JChristensen/Timezone
 #include <Wire.h>               // https://arduino.cc/en/Reference/Wire
 #include "config.h"
@@ -63,6 +63,7 @@ TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abb
 
 Button btnStart(START_BUTTON);
 Button btnDownload(DWNLD_BUTTON);
+DS3232RTC myRTC;
 
 //global variables
 int vBat, vccBattery, vccRegulator;   //battery and regulator voltages, read in setSystemClock() function
@@ -71,7 +72,7 @@ byte nLogBlink;                       //counter for blinking LED when logging a 
 //states for the state machine
 enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN, DOWNLOAD, SET_TIME} STATE;
 
-void setup(void)
+void setup()
 {
     time_t rtcTime, localTime;
 
@@ -107,23 +108,25 @@ void setup(void)
     digitalWrite(SENSOR_POWER, LOW);  //sensor power off
     setSystemClock(CLOCK_8MHZ);
     Serial.begin(BAUD_RATE);
-    
-    rtcTime = RTC.get();
+
+    myRTC.begin();
+    rtcTime = myRTC.get();
     localTime = myTZ.toLocal(rtcTime, &tcr);
-    Serial << endl << F("Double-A Data Logger SW-v") << _DEC(SOFTWARE_VERSION) << endl;
+    Serial << F("\nDouble-A Data Logger  (Compiled" __DATE__ " " __TIME__ ")\n");
+    Serial << F(__FILE__ "\n");
     printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
     LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
     EEEP.begin(extEEPROM::twiClock400kHz);
 }
 
-void loop(void)
+void loop()
 {
     time_t rtcTime, utc, local, alarmTime;
     static boolean redLedState, grnLedState;
     static unsigned long ms, msLast;
     static unsigned long msStateTime;        //time spent in a particular state
-    
+
     ms = millis();
     switch (STATE)
     {
@@ -133,7 +136,7 @@ void loop(void)
             digitalWrite(GRN_LED, LOW);
             STATE = COMMAND;
             break;
-            
+
         case COMMAND:
             btnDownload.read();
             btnStart.read();
@@ -169,16 +172,16 @@ void loop(void)
                     digitalWrite(GRN_LED, LOW);
                     delay(BLIP_ON);
                 }
-                
+
                 //calculate the first alarm
-                rtcTime = RTC.get();
+                rtcTime = myRTC.get();
                 alarmTime = rtcTime + (LOG_INTERVAL) - rtcTime % (LOG_INTERVAL);
-            
+
                 //set RTC alarm to match on hours, minutes, seconds
-                RTC.setAlarm(ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
-                RTC.alarm(ALARM_1);                   //clear RTC interrupt flag
-                RTC.alarmInterrupt(ALARM_1, true);    //enable alarm interrupts
-                
+                myRTC.setAlarm(DS3232RTC::ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
+                myRTC.alarm(DS3232RTC::ALARM_1);                   //clear RTC interrupt flag
+                myRTC.alarmInterrupt(DS3232RTC::ALARM_1, true);    //enable alarm interrupts
+
                 EICRA = _BV(ISC11);               //interrupt on falling edge
                 EIFR = _BV(INTF1);                //clear the interrupt flag (setting ISCnn can cause an interrupt)
                 EIMSK = _BV(INT1);                //enable INT1
@@ -187,14 +190,14 @@ void loop(void)
             else if (ms - msStateTime >= STATE_TIMEOUT * 1000UL) {
                 STATE = POWER_DOWN;
             }
-            
+
             //run the LED
             if ((redLedState && ms - msLast >= BLIP_ON) || (!redLedState && ms - msLast >= BLIP_OFF)) {
                 msLast = ms;
                 digitalWrite(RED_LED, redLedState = !redLedState);
             }
             break;
-        
+
         case INITIALIZE:
         Serial << endl << F("INITIALIZED") << endl;
            for (uint8_t i=0; i<3; i++) {     //blink both LEDs to acknowledge
@@ -210,11 +213,11 @@ void loop(void)
             LOGDATA.readLogStatus(true);
             STATE = ENTER_COMMAND;
             break;
-            
+
         case LOGGING:
             logSensorData();
             break;
-            
+
         case POWER_DOWN:
             //disable RTC alarms so no interrupts are generated
             //there is no exit from this state except a reset
@@ -225,25 +228,25 @@ void loop(void)
                 delay(BLIP_ON);
             }
             Serial << endl << F("POWER DOWN") << endl;
-            RTC.alarmInterrupt(ALARM_1, false);
-            RTC.alarmInterrupt(ALARM_2, false);
+            myRTC.alarmInterrupt(DS3232RTC::ALARM_1, false);
+            myRTC.alarmInterrupt(DS3232RTC::ALARM_2, false);
             EIMSK = 0;                //might as well also disable external interrupts to make absolutely sure
             gotoSleep(false);
             STATE = ENTER_COMMAND;    //should never get here but just in case
             break;
-            
+
         case DOWNLOAD:
             LOGDATA.download(&myTZ);
             STATE = ENTER_COMMAND;
             break;
-            
+
         case SET_TIME:
             if (Serial.available() >= 10) {
                 utc = Serial.parseInt();
                 setTime(utc);
-                RTC.set(utc);
+                myRTC.set(utc);
                 const uint8_t RTC_STATUS(0x0F);     // DS3232 status register
-                RTC.writeRTC(RTC_STATUS, 0x00);     // clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
+                myRTC.writeRTC(RTC_STATUS, 0x00);     // clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
                 local = myTZ.toLocal(utc, &tcr);
                 while (Serial.read() >= 0);
                 Serial << endl << F("Time set to: ") << endl;
@@ -268,7 +271,7 @@ void loop(void)
 //when changing the log data structure, the code blocks below with
 //comments (1), (2) and (3) will need modification.
 //block (3) is optional and can be deleted if desired, doing so will save a little run time and therefore power.
-void logSensorData(void)
+void logSensorData()
 {
     time_t rtcTime, alarmTime;
     int tempRTC;
@@ -277,11 +280,11 @@ void logSensorData(void)
     //int tempSensor;                         //sensor temperature (fahrenheit times 10)
     //boolean validTemp;
 
-    rtcTime = RTC.get();
+    rtcTime = myRTC.get();
 
     { /*---- (1) READ SENSORS ----*/
         digitalWrite(SENSOR_POWER, HIGH);
-        tempRTC = RTC.temperature() * 9 / 2 + 320;
+        tempRTC = myRTC.temperature() * 9 / 2 + 320;
         v1 = analogRead(1);
         v1 = analogRead(1);
         v2 = analogRead(2);
@@ -330,8 +333,8 @@ void logSensorData(void)
 
     //calculate and set the next alarm
     alarmTime = rtcTime + (LOG_INTERVAL);
-    RTC.setAlarm(ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
-    RTC.alarm(ALARM_1);               //clear RTC interrupt flag
+    myRTC.setAlarm(DS3232RTC::ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
+    myRTC.alarm(DS3232RTC::ALARM_1);               //clear RTC interrupt flag
 
     //blink LED to indicate record logged
     if (nLogBlink) {
@@ -346,13 +349,13 @@ void logSensorData(void)
 void gotoSleep(boolean enableRegulator)
 {
     uint8_t adcsra, mcucr1, mcucr2;
- 
+
     Serial.flush();
     Serial.end();
     peripPower(false);                 //peripheral power off
     digitalWrite(RED_LED, LOW);        //LEDs off
     digitalWrite(GRN_LED, LOW);
-    pinMode(SCL, INPUT);               //tri-state the i2c bus   
+    pinMode(SCL, INPUT);               //tri-state the i2c bus
     pinMode(SDA, INPUT);
     sleep_enable();
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
@@ -372,7 +375,7 @@ void gotoSleep(boolean enableRegulator)
     sleep_cpu();                   //go to sleep
     sleep_disable();               //wake up here
     if (!enableRegulator) setSystemClock(CLOCK_8MHZ);
-    ADCSRA = adcsra;               //restore ADCSRA    
+    ADCSRA = adcsra;               //restore ADCSRA
     Serial.begin(BAUD_RATE);
     peripPower(true);              //peripheral power on
     delay(1);                      //a little ramp-up time
@@ -399,7 +402,7 @@ void setSystemClock(uint8_t clkpr)
     CLKPR = _BV(CLKPCE);                     //set the clock prescaler change enable bit
     CLKPR = clkpr;
     sei();
-    
+
     if (clkpr == CLOCK_1MHZ) {
         ADCSRA = 0x87;                       //adjust the ADC prescaler for faster system clock
         digitalWrite(BOOST_REGULATOR, LOW);
