@@ -1,8 +1,11 @@
-/*----------------------------------------------------------------------*
- * config.h -- user-definable parameters                                *
- * define logging interval, eeprom characteristics and the log data     *
- * structure here.                                                      *
- *----------------------------------------------------------------------*/
+// Double-A DataLogger: A low-power Arduino-based data logger.
+// https://github.com/JChristensen/aaLogger_SW
+// Copyright (C) 2013-2024 by Jack Christensen and licensed under
+// GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
+
+// config.h -- user-definable parameters
+// define logging interval, eeprom characteristics and the log data
+// structure here.
 
 #ifndef config_h
 #define config_h
@@ -14,27 +17,27 @@
 #define EEPROM_KBITS kbits_2048     // size of one EEPROM in kilobits
 #define EEPROM_PAGE 256             // EEPROM page size in BYTES
 
-/*----------------------------------------------------------------------*
- * The struct below defines the log data. When modifying the struct,    *
- * also change the logData::download() function in logData.cpp and the  *
- * logSensorData() function in the main module accordingly.             *
- *                                                                      *
- * When using M24M02 EEPROMs, the size of the struct should be a        *
- * multiple of four bytes if at all possible. This will minimize the    *
- * number of write cycles and therefore maximize EEPROM endurance.      *
- * Pad the struct out with a byte array, e.g. byte RFU[2]; if needed.   *
- *----------------------------------------------------------------------*/
+
+// The struct below defines the log data. When modifying the struct,
+// also change the logData::download() function in logData.cpp and the
+// logSensorData() function in the main module accordingly.
+//
+// When using M24M02 EEPROMs, the size of the struct should be a
+// multiple of four bytes if at all possible. This will minimize the
+// number of write cycles and therefore maximize EEPROM endurance.
+// Pad the struct out with a byte array, e.g. byte RFU[2]; if needed.
+
 struct logData_t {
     unsigned long timestamp;
     int tempRTC;
+    int tempDS;
+    int ldr;
     int vBat;
     int vReg;
-    int v1;
-    int v2;
-    int v3;
+    byte RFU[2];    // make the log record a multiple of 4 bytes
 };
 
-//this line defines the field names and is printed at the beginning of the data when downloading
-#define CSV_HEADER "utc,local,tz,tempRTC,vBat,vReg,v1,v2,v3"
+// this line defines the field names and is printed at the beginning of the data when downloading
+#define CSV_HEADER "utc,local,tz,tempRTC,tempDS,ldr,vBat,vReg"
 
 #endif

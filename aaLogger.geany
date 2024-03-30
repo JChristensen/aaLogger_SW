@@ -20,6 +20,7 @@ indent_mode=2
 [project]
 name=aaLogger
 base_path=/home/jack/Dropbox/sketchbook/projects/aaLogger
+description=
 
 [long line marker]
 long_line_behaviour=1
@@ -27,13 +28,13 @@ long_line_column=72
 
 [files]
 current_page=0
-FILE_NAME_0=6208;Arduino;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2FaaLogger.ino;0;4
-FILE_NAME_1=0;C++;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2Fconfig.h;0;4
-FILE_NAME_2=0;C++;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2FlogData.h;0;4
-FILE_NAME_3=0;C++;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2FlogData.cpp;0;4
-FILE_NAME_4=0;Arduino;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2Fds18b20.ino;0;4
-FILE_NAME_5=1460;C++;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2Fdefs.h;0;4
-FILE_NAME_6=0;Arduino;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2Futil.ino;0;4
+FILE_NAME_0=62;Arduino;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2FaaLogger.ino;0;4
+FILE_NAME_1=232;C++;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2Fconfig.h;0;4
+FILE_NAME_2=232;C++;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2FlogData.h;0;4
+FILE_NAME_3=232;C++;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2FlogData.cpp;0;4
+FILE_NAME_4=232;Arduino;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2Fds18b20.ino;0;4
+FILE_NAME_5=232;C++;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2Fdefs.h;0;4
+FILE_NAME_6=232;Arduino;0;EUTF-8;0;1;1;%2Fhome%2Fjack%2FDropbox%2Fsketchbook%2Fprojects%2FaaLogger%2Futil.ino;0;4
 
 [VTE]
 last_dir=/home/jack

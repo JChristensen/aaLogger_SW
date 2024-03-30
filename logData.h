@@ -1,5 +1,10 @@
-//logData.h - A class to define the log data structure and
-//provide methods for managing it.
+// Double-A DataLogger: A low-power Arduino-based data logger.
+// https://github.com/JChristensen/aaLogger_SW
+// Copyright (C) 2013-2024 by Jack Christensen and licensed under
+// GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
+
+// logData.h - A class to define the log data structure and
+// provide methods for managing it.
 
 #ifndef logData_h
 #define logData_h
@@ -17,18 +22,18 @@
 #include "defs.h"
 #include "config.h"
 
-//EEPROM full error, returned by write() if not in wrap mode and EEPROM is full
+// EEPROM full error, returned by write() if not in wrap mode and EEPROM is full
 #define EEPROM_FULL_ERR 8
 
 class logData
 {
     public:
-        logData(unsigned long eepromCapacity, boolean wrapMode);
+        logData(unsigned long eepromCapacity, bool wrapMode);
         void initialize();
         byte write();
         void download(Timezone *tz);
-        boolean readLogStatus(boolean printStatus);
-        boolean configChanged(boolean printStatus);
+        bool readLogStatus(bool printStatus);
+        bool configChanged(bool printStatus);
 
         union {
             logData_t fields;
@@ -36,33 +41,33 @@ class logData
         };
 
     private:
-        boolean readFirst();
-        boolean readNext();
-        void writeLogStatus(boolean writeConfig);
+        bool readFirst();
+        bool readNext();
+        void writeLogStatus(bool writeConfig);
         void print8601(time_t t);
         void printI00(int val, char delim);
 
-        unsigned long _firstAddr;         //pointer to the oldest record in EEPROM
-        unsigned long _lastAddr;          //pointer to the newest record in EEPROM
-        unsigned long _nRec;              //number of records stored in EEPROM
-        unsigned long _eepromCap;         //EEPROM capacity in bytes (total for all EEPROM devices combined)
-        unsigned long _maxRec;            //maximum number of records that will fit in EEPROM
-        unsigned long _topAddr;           //pointer to the last EEPROM location that can hold a whole record
-        static const byte _recSize = sizeof(logData_t);    //size of log record in bytes
-        boolean _wrapMode;                //true: continue logging when EEPROM is full, next record replacing the oldest
-                                          //false: logging stops when EEPROM is full
-        unsigned long _readAddr;          //pointer to read records
+        unsigned long _firstAddr;       // pointer to the oldest record in EEPROM
+        unsigned long _lastAddr;        // pointer to the newest record in EEPROM
+        unsigned long _nRec;            // number of records stored in EEPROM
+        unsigned long _eepromCap;       // EEPROM capacity in bytes (total for all EEPROM devices combined)
+        unsigned long _maxRec;          // maximum number of records that will fit in EEPROM
+        unsigned long _topAddr;         // pointer to the last EEPROM location that can hold a whole record
+        static const byte _recSize = sizeof(logData_t); // size of log record in bytes
+        bool _wrapMode;                 // true: continue logging when EEPROM is full, next record replacing the oldest
+                                        // false: logging stops when EEPROM is full
+        unsigned long _readAddr;        // pointer to read records
 
-        union {                           //logging status data persisted in RTC SRAM (battery-backed)
+        union {                         // logging status data persisted in RTC SRAM (battery-backed)
             struct {
-                unsigned long firstAddr;  //copies of variables above
+                unsigned long firstAddr;    // copies of variables above
                 unsigned long lastAddr;
                 unsigned long nRec;
                 unsigned long eepromCap;
                 unsigned long maxRec;
                 unsigned long topAddr;
                 byte recSize;
-                boolean wrapMode;
+                bool wrapMode;
             };
             byte bytes[26];
         } logStatus;

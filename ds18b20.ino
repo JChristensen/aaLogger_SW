@@ -1,28 +1,33 @@
-//ds18b20.ino - Functions for a DS18B20 temperature sensor.
-//To save a bit more power, uses the watchdog timer to sleep the
-//MCU for a second while the DS18B20 does the temperature conversion.
+// Double-A DataLogger: A low-power Arduino-based data logger.
+// https://github.com/JChristensen/aaLogger_SW
+// Copyright (C) 2013-2024 by Jack Christensen and licensed under
+// GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
 
-boolean readDS18B20(int *tF10)
+// ds18b20.ino - Functions for a DS18B20 temperature sensor.
+// To save a bit more power, uses the watchdog timer to sleep the
+// MCU for a second while the DS18B20 does the temperature conversion.
+
+bool readDS18B20(int *tF10)
 {
     OneWire ds(DS18B20_DQ);
     uint8_t dsData[12];
 
-    //start temperature conversion
+    // start temperature conversion
     ds.reset();
     ds.skip();
     ds.write(0x44);
 
-    //sleep while conversion in progress, leave the regulator on for the sensor
+    // sleep while conversion in progress, leave the regulator on for the sensor
     wdtEnable();
     gotoSleep(true);
     wdtDisable();
 
-    //read the results
+    // read the results
     ds.reset();
     ds.skip();
-    ds.write(0xBE); //read scratchpad
+    ds.write(0xBE); // read scratchpad
 
-    for ( int i=0; i<9; i++) { //read 9 bytes
+    for ( int i=0; i<9; i++) {  // read 9 bytes
         dsData[i] = ds.read();
     }
     if (OneWire::crc8(dsData, 8) == dsData[8]) {
@@ -30,37 +35,36 @@ boolean readDS18B20(int *tF10)
         return true;
     }
     else {
-        return false; //CRC error
+        return false;   // CRC error
     }
 }
 
 // Convert 12-bit °C temp from DS18B20 to an integer which is °F * 10
 int toFahrenheit(byte tempMSB, byte tempLSB)
 {
-    long tC16;    //16 times the temperature in deg C (DS18B20 resolution is 1/16 °C)
-    long tF160;   //160 times the temp in deg F (but without the 32 deg offset)
-    int tF10;     //10 times the temp in deg F
-
-    tC16 = (tempMSB << 8) + tempLSB;
-    tF160 = tC16 * 18;
-    tF10 = tF160 / 16;
-    if (tF160 % 16 >= 8) tF10++; //round up to the next tenth if needed
-    tF10 = tF10 + 320; //add in the offset (*10)
+    // 16 times the temperature in deg C (DS18B20 resolution is 1/16 °C)
+    long tC16 = (tempMSB << 8) + tempLSB;
+    // 160 times the temp in deg F (but without the 32 deg offset)
+    long tF160 = tC16 * 18;
+    // 10 times the temp in deg F
+    int tF10 = tF160 / 16;
+    if (tF160 % 16 >= 8) tF10++;    // round up to the next tenth if needed
+    tF10 = tF10 + 320;              // add in the offset*10
     return tF10;
 }
 
-//enable the wdt for 1 sec interrupt
+// enable the wdt for 1 sec interrupt
 void wdtEnable()
 {
     cli();
     wdt_reset();
     MCUSR = 0x00;
     WDTCSR |= _BV(WDCE) | _BV(WDE);
-    WDTCSR = _BV(WDIE) | _BV(WDP2) | _BV(WDP1);    //128K cycles = 1 sec
+    WDTCSR = _BV(WDIE) | _BV(WDP2) | _BV(WDP1); // 128K cycles = 1 sec
     sei();
 }
 
-//disable the wdt
+// disable the wdt
 void wdtDisable()
 {
     cli();
@@ -71,5 +75,5 @@ void wdtDisable()
     sei();
 }
 
-//nothing to do here, the WDT interrupt just wakes the MCU after the DS18B20 has completed conversion.
+// nothing to do here, the WDT interrupt just wakes the MCU after the DS18B20 has completed conversion.
 ISR(WDT_vect) {}

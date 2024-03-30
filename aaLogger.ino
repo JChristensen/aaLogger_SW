@@ -1,39 +1,10 @@
-/*----------------------------------------------------------------------*
- * Double-A DataLogger - A low-power Arduino-based data logger.         *
- * Jack Christensen 20Mar2013 v1                                        *
- *                                                                      *
- * This basic logging sketch logs the date/time, the temperature from   *
- * the DS3232 sensor, the battery and regulator voltages.               *
- *                                                                      *
- * Double-A DataLogger Features:                                        *
- * - Runs on two AA alkaline cells.                                     *
- * - DS3232 real-time clock provides timing for logging and battery-    *
- *   backed SRAM to persist EEPROM pointers and status through MCU      *
- *   resets and main battery changes.                                   *
- * - Data is logged to external EEPROM (1 or 2 x M24M02 for up to       *
- *   512kB total).                                                      *
- * - MCP1640C boost regulator provides 3.3V or 5V, but has a bypass     *
- *   mode which puts the regulator into a low-power shutdown mode and   *
- *   passes the battery voltage straight through to save power while    *
- *   the MCU sleeps between data samples.                               *
- *                                                                      *
- * Developed with Arduino 1.0.3.                                        *
- * Set ATmega328P Fuses (L/H/E): 0x7F, 0xDE, 0x06.                      *
- * Uses an 8MHz crystal with CKDIV8 bit programmed, so the system clock *
- * is 1MHz after reset. This is to ensure the MCU is not overclocked    *
- * at low voltages when the boost regulator is disabled. Clock is       *
- * changed to 8MHz when the regulator is enabled.                       *
- *                                                                      *
- * CC BY-SA                                                             *
- * This work is licensed under the Creative Commons Attribution-        *
- * ShareAlike 3.0 Unported License. To view a copy of this license,     *
- * visit http://creativecommons.org/licenses/by-sa/3.0/ or send a       *
- * letter to Creative Commons, 171 Second Street, Suite 300,            *
- * San Francisco, California, 94105, USA.                               *
- *----------------------------------------------------------------------*/
+// Double-A DataLogger: A low-power Arduino-based data logger.
+// https://github.com/JChristensen/aaLogger_SW
+// Copyright (C) 2013-2024 by Jack Christensen and licensed under
+// GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
 
-//set fuses:
-//avrdude -p m328p -U lfuse:w:0x7f:m -U hfuse:w:0xde:m -U efuse:w:0x06:m -v
+// This basic logging sketch logs the date/time, the temperature from
+// the DS3232 sensor, the battery and regulator voltages.
 
 #include <avr/sleep.h>
 #include <avr/wdt.h>
@@ -49,54 +20,54 @@
 #include "defs.h"
 #include "logData.h"
 
-//Continental US Time Zones
-TimeChangeRule EDT = {"EDT", Second, Sun, Mar, 2, -240};    //Daylight time = UTC - 4 hours
-TimeChangeRule EST = {"EST", First, Sun, Nov, 2, -300};     //Standard time = UTC - 5 hours
-TimeChangeRule CDT = {"CDT", Second, Sun, Mar, 2, -300};    //Daylight time = UTC - 5 hours
-TimeChangeRule CST = {"CST", First, Sun, Nov, 2, -360};     //Standard time = UTC - 6 hours
-TimeChangeRule MDT = {"MDT", Second, Sun, Mar, 2, -360};    //Daylight time = UTC - 6 hours
-TimeChangeRule MST = {"MST", First, Sun, Nov, 2, -420};     //Standard time = UTC - 7 hours
-TimeChangeRule PDT = {"PDT", Second, Sun, Mar, 2, -420};    //Daylight time = UTC - 7 hours
-TimeChangeRule PST = {"PST", First, Sun, Nov, 2, -480};     //Standard time = UTC - 8 hours
-Timezone myTZ(EDT, EST);    //use the time change rules for your time zone (or declare new ones)
-TimeChangeRule *tcr;        //pointer to the time change rule, use to get TZ abbrev
+// Continental US Time Zones
+TimeChangeRule EDT = {"EDT", Second, Sun, Mar, 2, -240};    // Daylight time = UTC - 4 hours
+TimeChangeRule EST = {"EST", First, Sun, Nov, 2, -300};     // Standard time = UTC - 5 hours
+TimeChangeRule CDT = {"CDT", Second, Sun, Mar, 2, -300};    // Daylight time = UTC - 5 hours
+TimeChangeRule CST = {"CST", First, Sun, Nov, 2, -360};     // Standard time = UTC - 6 hours
+TimeChangeRule MDT = {"MDT", Second, Sun, Mar, 2, -360};    // Daylight time = UTC - 6 hours
+TimeChangeRule MST = {"MST", First, Sun, Nov, 2, -420};     // Standard time = UTC - 7 hours
+TimeChangeRule PDT = {"PDT", Second, Sun, Mar, 2, -420};    // Daylight time = UTC - 7 hours
+TimeChangeRule PST = {"PST", First, Sun, Nov, 2, -480};     // Standard time = UTC - 8 hours
+Timezone myTZ(EDT, EST);    // use the time change rules for your time zone (or declare new ones)
+TimeChangeRule *tcr;        // pointer to the time change rule, use to get TZ abbrev
 
 Button btnStart(START_BUTTON);
 Button btnDownload(DWNLD_BUTTON);
 DS3232RTC myRTC;
 
-//global variables
-int vBat, vccBattery, vccRegulator;   //battery and regulator voltages, read in setSystemClock() function
-byte nLogBlink;                       //counter for blinking LED when logging a record
+// global variables
+int vBat, vccBattery, vccRegulator; // battery and regulator voltages, read in setSystemClock() function
+byte nLogBlink;                     // counter for blinking LED when logging a record
 
-//states for the state machine
+// states for the state machine
 enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN, DOWNLOAD, SET_TIME} STATE;
 
 void setup()
 {
     time_t rtcTime, localTime;
 
-    const uint8_t pinModes[] = {        //initial pin configuration
-        INPUT_PULLUP,    //0    RXD
-        INPUT_PULLUP,    //1    TXD
-        OUTPUT,          //2    peripheral power (RTC, EEPROMs)
-        INPUT_PULLUP,    //3    RTC interrupt
-        OUTPUT,          //4    boost regulator enable
-        INPUT_PULLUP,    //5    download/set button
-        INPUT_PULLUP,    //6    start/init button
-        OUTPUT,          //7    red LED
-        OUTPUT,          //8    green LED
-        OUTPUT,          //9    sensor power enable
-        INPUT_PULLUP,    //10   [SS] unused
-        INPUT_PULLUP,    //11   [MOSI] unused
-        INPUT_PULLUP,    //12   [MISO] unused
-        INPUT_PULLUP,    //13   [SCK] unused
-        INPUT_PULLUP,    //A0   unused
-        INPUT,           //A1   voltage input
-        INPUT,           //A2   voltage input
-        INPUT,           //A3   voltage input
-        INPUT,           //A4   [SDA] external pullup on board
-        INPUT            //A5   [SCL] external pullup on board
+    const uint8_t pinModes[] = {    //initial pin configuration
+        INPUT_PULLUP,   // 0    RXD
+        INPUT_PULLUP,   // 1    TXD
+        OUTPUT,         // 2    peripheral power (RTC, EEPROMs)
+        INPUT_PULLUP,   // 3    RTC interrupt
+        OUTPUT,         // 4    boost regulator enable
+        INPUT_PULLUP,   // 5    download/set button
+        INPUT_PULLUP,   // 6    start/init button
+        OUTPUT,         // 7    red LED
+        OUTPUT,         // 8    green LED
+        OUTPUT,         // 9    sensor power enable
+        INPUT_PULLUP,   // 10   [SS] unused
+        INPUT_PULLUP,   // 11   [MOSI] unused
+        INPUT_PULLUP,   // 12   [MISO] unused
+        INPUT_PULLUP,   // 13   [SCK] unused
+        INPUT_PULLUP,   // A0   unused
+        INPUT,          // A1   voltage input
+        INPUT,          // A2   voltage input
+        INPUT,          // A3   voltage input
+        INPUT,          // A4   [SDA] external pullup on board
+        INPUT           // A5   [SCL] external pullup on board
     };
 
     for (uint8_t i=0; i<sizeof(pinModes); i++) {    //configure pins
@@ -104,15 +75,15 @@ void setup()
     }
     btnStart.begin();
     btnDownload.begin();
-    peripPower(true);                 //peripheral power on
-    digitalWrite(SENSOR_POWER, LOW);  //sensor power off
+    peripPower(true);                   // peripheral power on
+    digitalWrite(SENSOR_POWER, LOW);    // sensor power off
     setSystemClock(CLOCK_8MHZ);
     Serial.begin(BAUD_RATE);
 
     myRTC.begin();
     rtcTime = myRTC.get();
     localTime = myTZ.toLocal(rtcTime, &tcr);
-    Serial << F("\nDouble-A Data Logger  (Compiled" __DATE__ " " __TIME__ ")\n");
+    Serial << F("\nDouble-A Data Logger\nCompiled " __DATE__ " " __TIME__ "\n");
     Serial << F(__FILE__ "\n");
     printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
     LOGDATA.configChanged(true);
@@ -123,15 +94,15 @@ void setup()
 void loop()
 {
     time_t rtcTime, utc, local, alarmTime;
-    static boolean redLedState, grnLedState;
+    static bool redLedState, grnLedState;
     static unsigned long ms, msLast;
-    static unsigned long msStateTime;        //time spent in a particular state
+    static unsigned long msStateTime;   // time spent in a particular state
 
     ms = millis();
     switch (STATE)
     {
-        case ENTER_COMMAND:                  //transition state before entering the COMMAND state
-            msStateTime = ms;                //record the time command mode started
+        case ENTER_COMMAND:             // transition state before entering the COMMAND state
+            msStateTime = ms;           // record the time command mode started
             digitalWrite(RED_LED, redLedState = HIGH);
             digitalWrite(GRN_LED, LOW);
             STATE = COMMAND;
@@ -153,7 +124,7 @@ void loop()
             else if (btnDownload.wasReleased())
                 STATE = DOWNLOAD;
             else if (btnStart.wasReleased()) {
-                if (!LOGDATA.readLogStatus(false)) {        //is there room in the eeprom?
+                if (!LOGDATA.readLogStatus(false)) {    // is there room in the eeprom?
                     Serial << F("EEPROM FULL") << endl;
                     STATE = ENTER_COMMAND;
                     break;
@@ -166,32 +137,32 @@ void loop()
                 nLogBlink = N_LOG_BLINK;
                 Serial << endl << F("LOGGING") << endl;
                 digitalWrite(RED_LED, LOW);
-                for (uint8_t i=0; i<3; i++) {     //blink the LED to acknowledge
+                for (uint8_t i=0; i<3; i++) {   // blink the LED to acknowledge
                     digitalWrite(GRN_LED, HIGH);
                     delay(BLIP_ON);
                     digitalWrite(GRN_LED, LOW);
                     delay(BLIP_ON);
                 }
 
-                //calculate the first alarm
+                // calculate the first alarm
                 rtcTime = myRTC.get();
                 alarmTime = rtcTime + (LOG_INTERVAL) - rtcTime % (LOG_INTERVAL);
 
-                //set RTC alarm to match on hours, minutes, seconds
+                // set RTC alarm to match on hours, minutes, seconds
                 myRTC.setAlarm(DS3232RTC::ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
-                myRTC.alarm(DS3232RTC::ALARM_1);                   //clear RTC interrupt flag
-                myRTC.alarmInterrupt(DS3232RTC::ALARM_1, true);    //enable alarm interrupts
+                myRTC.alarm(DS3232RTC::ALARM_1);                // clear RTC interrupt flag
+                myRTC.alarmInterrupt(DS3232RTC::ALARM_1, true); // enable alarm interrupts
 
-                EICRA = _BV(ISC11);               //interrupt on falling edge
-                EIFR = _BV(INTF1);                //clear the interrupt flag (setting ISCnn can cause an interrupt)
-                EIMSK = _BV(INT1);                //enable INT1
-                gotoSleep(false);                 //go to sleep, shut the regulator down
+                EICRA = _BV(ISC11);     // interrupt on falling edge
+                EIFR = _BV(INTF1);      // clear the interrupt flag (setting ISCnn can cause an interrupt)
+                EIMSK = _BV(INT1);      // enable INT1
+                gotoSleep(false);       // go to sleep, shut the regulator down
             }
             else if (ms - msStateTime >= STATE_TIMEOUT * 1000UL) {
                 STATE = POWER_DOWN;
             }
 
-            //run the LED
+            // run the LED
             if ((redLedState && ms - msLast >= BLIP_ON) || (!redLedState && ms - msLast >= BLIP_OFF)) {
                 msLast = ms;
                 digitalWrite(RED_LED, redLedState = !redLedState);
@@ -200,7 +171,7 @@ void loop()
 
         case INITIALIZE:
         Serial << endl << F("INITIALIZED") << endl;
-           for (uint8_t i=0; i<3; i++) {     //blink both LEDs to acknowledge
+           for (uint8_t i=0; i<3; i++) {    // blink both LEDs to acknowledge
                 digitalWrite(RED_LED, HIGH);
                 digitalWrite(GRN_LED, HIGH);
                 delay(BLIP_ON);
@@ -219,9 +190,9 @@ void loop()
             break;
 
         case POWER_DOWN:
-            //disable RTC alarms so no interrupts are generated
-            //there is no exit from this state except a reset
-           for (uint8_t i=0; i<5; i++) {         //signal power down
+            // disable RTC alarms so no interrupts are generated
+            // there is no exit from this state except a reset
+           for (uint8_t i=0; i<5; i++) {        // signal power down
                 digitalWrite(RED_LED, HIGH);
                 delay(BLIP_ON);
                 digitalWrite(RED_LED, LOW);
@@ -230,9 +201,9 @@ void loop()
             Serial << endl << F("POWER DOWN") << endl;
             myRTC.alarmInterrupt(DS3232RTC::ALARM_1, false);
             myRTC.alarmInterrupt(DS3232RTC::ALARM_2, false);
-            EIMSK = 0;                //might as well also disable external interrupts to make absolutely sure
+            EIMSK = 0;              // might as well also disable external interrupts to make absolutely sure
             gotoSleep(false);
-            STATE = ENTER_COMMAND;    //should never get here but just in case
+            STATE = ENTER_COMMAND;  // should never get here but just in case
             break;
 
         case DOWNLOAD:
@@ -246,7 +217,7 @@ void loop()
                 setTime(utc);
                 myRTC.set(utc);
                 const uint8_t RTC_STATUS(0x0F);     // DS3232 status register
-                myRTC.writeRTC(RTC_STATUS, 0x00);     // clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
+                myRTC.writeRTC(RTC_STATUS, 0x00);   // clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
                 local = myTZ.toLocal(utc, &tcr);
                 while (Serial.read() >= 0);
                 Serial << endl << F("Time set to: ") << endl;
@@ -258,7 +229,7 @@ void loop()
                 STATE = POWER_DOWN;
             }
 
-            //run the LED
+            // run the LED
             if ((grnLedState && ms - msLast >= BLIP_ON) || (!redLedState && ms - msLast >= BLIP_OFF)) {
                 msLast = ms;
                 digitalWrite(GRN_LED, grnLedState = !grnLedState);
@@ -267,43 +238,37 @@ void loop()
     }
 }
 
-//read the sensors, log the data, then sleep.
-//when changing the log data structure, the code blocks below with
-//comments (1), (2) and (3) will need modification.
-//block (3) is optional and can be deleted if desired, doing so will save a little run time and therefore power.
+// read the sensors, log the data, then sleep.
+// when changing the log data structure, the code blocks below with
+// comments (1), (2) and (3) will need modification.
+// block (3) is optional and can be deleted if desired, doing so will save a little run time and therefore power.
 void logSensorData()
 {
     time_t rtcTime, alarmTime;
     int tempRTC;
-    int v1, v2, v3;
+    //int v1, v2, v3;
     byte stat;
-    //int tempSensor;                         //sensor temperature (fahrenheit times 10)
-    //boolean validTemp;
+    int tempSensor;     // sensor temperature (fahrenheit times 10)
+    bool validTemp;
+    int ldr;
 
     rtcTime = myRTC.get();
 
     { /*---- (1) READ SENSORS ----*/
-        digitalWrite(SENSOR_POWER, HIGH);
         tempRTC = myRTC.temperature() * 9 / 2 + 320;
-        v1 = analogRead(1);
-        v1 = analogRead(1);
-        v2 = analogRead(2);
-        v2 = analogRead(2);
-        v3 = analogRead(3);
-        v3 = analogRead(3);
-        //validTemp = readDS18B20(&tempSensor);
+        digitalWrite(SENSOR_POWER, HIGH);
+        validTemp = readDS18B20(&tempSensor);
+        ldr = analogRead(LDR);
         digitalWrite(SENSOR_POWER, LOW);
     }
 
     { /*---- (2) SAVE SENSOR DATA ----*/
         LOGDATA.fields.timestamp = rtcTime;
-        //LOGDATA.fields.tempRTC = tempSensor;
         LOGDATA.fields.tempRTC = tempRTC;
+        LOGDATA.fields.tempDS = tempSensor;
+        LOGDATA.fields.ldr = ldr;
         LOGDATA.fields.vBat = vccBattery;
         LOGDATA.fields.vReg = vccRegulator;
-        LOGDATA.fields.v1 = v1;
-        LOGDATA.fields.v2 = v2;
-        LOGDATA.fields.v3 = v3;
     }
 
     stat = LOGDATA.write();
@@ -325,102 +290,100 @@ void logSensorData()
 
     { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
         printTime(rtcTime); printDate(rtcTime);
-        //if (validTemp) Serial << F(", ") << tempSensor;
         Serial << F(", ") << tempRTC << F(", ");
-        Serial << vccBattery << F(", ") << vccRegulator << F(", ") << (long)v1 * vccRegulator / 1024 << F(", ");
-        Serial << (long)v2 * vccRegulator / 1024 << F(", ") << (long)v3 * vccRegulator / 1024 << endl;
+        if (validTemp) Serial << tempSensor << F(", ");
+        Serial << ldr << F(", ");
+        Serial << vccBattery << F(", ") << vccRegulator << endl;
     }
 
-    //calculate and set the next alarm
+    // calculate and set the next alarm
     alarmTime = rtcTime + (LOG_INTERVAL);
     myRTC.setAlarm(DS3232RTC::ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
-    myRTC.alarm(DS3232RTC::ALARM_1);               //clear RTC interrupt flag
+    myRTC.alarm(DS3232RTC::ALARM_1);    // clear RTC interrupt flag
 
-    //blink LED to indicate record logged
+    // blink LED to indicate record logged
     if (nLogBlink) {
         --nLogBlink;
         digitalWrite(GRN_LED, HIGH);
         delay(LOG_BLINK);
         digitalWrite(GRN_LED, LOW);
     }
-    gotoSleep(false);                 //go back to sleep, shut the regulator down
+    gotoSleep(false);   // go back to sleep, shut the regulator down
 }
 
-void gotoSleep(boolean enableRegulator)
+void gotoSleep(bool enableRegulator)
 {
     uint8_t adcsra, mcucr1, mcucr2;
 
     Serial.flush();
     Serial.end();
-    peripPower(false);                 //peripheral power off
-    digitalWrite(RED_LED, LOW);        //LEDs off
+    peripPower(false);              // peripheral power off
+    digitalWrite(RED_LED, LOW);     // LEDs off
     digitalWrite(GRN_LED, LOW);
-    pinMode(SCL, INPUT);               //tri-state the i2c bus
+    pinMode(SCL, INPUT);            // tri-state the i2c bus
     pinMode(SDA, INPUT);
     sleep_enable();
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     if (!enableRegulator) {
-        digitalWrite(SENSOR_POWER, LOW);   //sensor power off
+        digitalWrite(SENSOR_POWER, LOW);    // sensor power off
         setSystemClock(CLOCK_1MHZ);
     }
-    adcsra = ADCSRA;               //save the ADC Control and Status Register A
-    ADCSRA = 0;                    //disable ADC
-    //disable brown-out detector while MCU sleeps, must sleep within four clock cycles
+    adcsra = ADCSRA;        // save the ADC Control and Status Register A
+    ADCSRA = 0;             // disable ADC
+    // disable brown-out detector while MCU sleeps, must sleep within four clock cycles
     cli();
     mcucr1 = MCUCR | _BV(BODS) | _BV(BODSE);
     mcucr2 = mcucr1 & ~_BV(BODSE);
     MCUCR = mcucr1;
     MCUCR = mcucr2;
-    sei();                         //ensure interrupts enabled so we can wake up again
-    sleep_cpu();                   //go to sleep
-    sleep_disable();               //wake up here
+    sei();                      // ensure interrupts enabled so we can wake up again
+    sleep_cpu();                // go to sleep
+    sleep_disable();            // wake up here
     if (!enableRegulator) setSystemClock(CLOCK_8MHZ);
-    ADCSRA = adcsra;               //restore ADCSRA
+    ADCSRA = adcsra;            // restore ADCSRA
     Serial.begin(BAUD_RATE);
-    peripPower(true);              //peripheral power on
-    delay(1);                      //a little ramp-up time
+    peripPower(true);           // peripheral power on
+    delay(1);                   // a little ramp-up time
 }
 
-//interrupt from the RTC alarm. don't need to do anything, it's just to wake the MCU.
-ISR(INT1_vect)
-{
-}
+// interrupt from the RTC alarm. don't need to do anything, it's just to wake the MCU.
+ISR(INT1_vect) {}
 
-//enables the boost regulator to provide higher voltage and increases the system clock frequency,
-//or decreases the system clock frequency and disables the regulator to run on direct battery voltage.
+// enables the boost regulator to provide higher voltage and increases the system clock frequency,
+// or decreases the system clock frequency and disables the regulator to run on direct battery voltage.
 void setSystemClock(uint8_t clkpr)
 {
     if (clkpr == CLOCK_8MHZ) {
-        ADCSRA = 0x84;                       //adjust the ADC prescaler for slower system clock
+        ADCSRA = 0x84;          // adjust the ADC prescaler for slower system clock
         vccBattery = readVcc();
         digitalWrite(BOOST_REGULATOR, HIGH);
-        delay(1);                            //actually 8ms because the clock is 1MHz at this point
+        delay(1);               // actually 8ms because the clock is 1MHz at this point
         vccRegulator = readVcc();
     }
 
     cli();
-    CLKPR = _BV(CLKPCE);                     //set the clock prescaler change enable bit
+    CLKPR = _BV(CLKPCE);        // set the clock prescaler change enable bit
     CLKPR = clkpr;
     sei();
 
     if (clkpr == CLOCK_1MHZ) {
-        ADCSRA = 0x87;                       //adjust the ADC prescaler for faster system clock
+        ADCSRA = 0x87;           // adjust the ADC prescaler for faster system clock
         digitalWrite(BOOST_REGULATOR, LOW);
-        delay(1);                            //actually 8ms because the clock is 1MHz at this point
+        delay(1);                // actually 8ms because the clock is 1MHz at this point
     }
 }
 
-//turn peripheral (rtc, eeprom) power on or off,
-//using direct port manipulation for fastest transition.
-//The PD2 pin powers the peripherals (Arduino pin D2).
-void peripPower(boolean enable)
+// turn peripheral (rtc, eeprom) power on or off,
+// using direct port manipulation for fastest transition.
+// The PD2 pin powers the peripherals (Arduino pin D2).
+void peripPower(bool enable)
 {
-    if (enable) {                   //turn power on
-        PORTD |= _BV(PORTD2);       //input pullup is transition state
-        DDRD |= _BV(DDD2);          //output high
+    if (enable) {               // turn power on
+        PORTD |= _BV(PORTD2);   // input pullup is transition state
+        DDRD |= _BV(DDD2);      // output high
     }
-    else {                          //turn power off
-        DDRD &= ~_BV(DDD2);         //input pullup is transition state
-        PORTD &= ~_BV(PORTD2);      //turn off pullup for tri-state/hi-z
+    else {                      // turn power off
+        DDRD &= ~_BV(DDD2);     // input pullup is transition state
+        PORTD &= ~_BV(PORTD2);  // turn off pullup for tri-state/hi-z
     }
 }
