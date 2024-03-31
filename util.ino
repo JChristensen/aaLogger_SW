@@ -7,7 +7,7 @@
 
 // read 1.1V reference against AVcc
 // from http://code.google.com/p/tinkerit/wiki/SecretVoltmeter
-int readVcc()
+int16_t readVcc()
 {
     ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
     delay(2);                               // Vref settling time
@@ -20,11 +20,11 @@ int readVcc()
 // resistors R4 and R5 form the voltage divider.
 // NOTE: When switching from the DEFAULT to the INTERNAL 1.1V ADC reference, it can take
 // 5-10ms for Aref to stabilize because it is held up by a 100nF capacitor on the board.
-int readBattery()
+int16_t readBattery()
 {
-    const int R4 = 47500;   // ohms
-    const int R5 = 10000;   // ohms
-    long adc6, adc7;
+    const int16_t R4 = 47500;   // ohms
+    const int16_t R5 = 10000;   // ohms
+    int32_t adc6, adc7;
 
     analogReference(INTERNAL);
     adc6 = analogRead(6);
@@ -61,7 +61,7 @@ void printDate(time_t t)
 // Print an integer in "00" format (with leading zero),
 // followed by a delimiter character to Serial.
 // Input value assumed to be between 0 and 99.
-void printI00(int val, char delim)
+void printI00(int16_t val, char delim)
 {
     if (val < 10) Serial << '0';
     Serial << _DEC(val);

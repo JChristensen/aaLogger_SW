@@ -7,7 +7,7 @@
 // To save a bit more power, uses the watchdog timer to sleep the
 // MCU for a second while the DS18B20 does the temperature conversion.
 
-bool readDS18B20(int *tF10)
+bool readDS18B20(int16_t *tF10)
 {
     OneWire ds(DS18B20_DQ);
     uint8_t dsData[12];
@@ -27,7 +27,7 @@ bool readDS18B20(int *tF10)
     ds.skip();
     ds.write(0xBE); // read scratchpad
 
-    for ( int i=0; i<9; i++) {  // read 9 bytes
+    for (int16_t i=0; i<9; i++) {  // read 9 bytes
         dsData[i] = ds.read();
     }
     if (OneWire::crc8(dsData, 8) == dsData[8]) {
@@ -40,14 +40,14 @@ bool readDS18B20(int *tF10)
 }
 
 // Convert 12-bit °C temp from DS18B20 to an integer which is °F * 10
-int toFahrenheit(byte tempMSB, byte tempLSB)
+int16_t toFahrenheit(uint8_t tempMSB, uint8_t tempLSB)
 {
     // 16 times the temperature in deg C (DS18B20 resolution is 1/16 °C)
-    long tC16 = (tempMSB << 8) + tempLSB;
+    int32_t tC16 = (tempMSB << 8) + tempLSB;
     // 160 times the temp in deg F (but without the 32 deg offset)
-    long tF160 = tC16 * 18;
+    int32_t tF160 = tC16 * 18;
     // 10 times the temp in deg F
-    int tF10 = tF160 / 16;
+    int16_t tF10 = tF160 / 16;
     if (tF160 % 16 >= 8) tF10++;    // round up to the next tenth if needed
     tF10 = tF10 + 320;              // add in the offset*10
     return tF10;

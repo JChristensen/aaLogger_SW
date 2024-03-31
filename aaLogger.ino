@@ -10,7 +10,7 @@
 #include <avr/wdt.h>
 #include <JC_Button.h>          // https://github.com/JChristensen/JC_Button
 #include <DS3232RTC.h>          // https://github.com/JChristensen/DS3232RTC
-#include <extEEPROM.h>          // https://github.com/JChristensen/extEEPROM
+#include <JC_EEPROM.h>          // https://github.com/JChristensen/JC_EEPROM
 #include <OneWire.h>            // https://www.pjrc.com/teensy/td_libs_OneWire.html
 #include <Streaming.h>          // https://github.com/janelia-arduino/Streaming
 #include <TimeLib.h>            // https://playground.arduino.cc/Code/Time
@@ -37,8 +37,8 @@ Button btnDownload(DWNLD_BUTTON);
 DS3232RTC myRTC;
 
 // global variables
-int vBat, vccBattery, vccRegulator; // battery and regulator voltages, read in setSystemClock() function
-byte nLogBlink;                     // counter for blinking LED when logging a record
+int16_t vccBattery, vccRegulator;   // battery and regulator voltages, read in setSystemClock() function
+uint8_t nLogBlink;                  // counter for blinking LED when logging a record
 
 // states for the state machine
 enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN, DOWNLOAD, SET_TIME} STATE;
@@ -88,21 +88,21 @@ void setup()
     printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
     LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
-    EEEP.begin(extEEPROM::twiClock400kHz);
+    EEEP.begin(JC_EEPROM::twiClock400kHz);
 }
 
 void loop()
 {
     time_t rtcTime, utc, local, alarmTime;
     static bool redLedState, grnLedState;
-    static unsigned long ms, msLast;
-    static unsigned long msStateTime;   // time spent in a particular state
+    static uint32_t ms, msLast;
+    static uint32_t msStateTime;    // time spent in a particular state
 
     ms = millis();
     switch (STATE)
     {
-        case ENTER_COMMAND:             // transition state before entering the COMMAND state
-            msStateTime = ms;           // record the time command mode started
+        case ENTER_COMMAND:         // transition state before entering the COMMAND state
+            msStateTime = ms;       // record the time command mode started
             digitalWrite(RED_LED, redLedState = HIGH);
             digitalWrite(GRN_LED, LOW);
             STATE = COMMAND;
@@ -245,28 +245,21 @@ void loop()
 void logSensorData()
 {
     time_t rtcTime, alarmTime;
-    int tempRTC;
-    //int v1, v2, v3;
-    byte stat;
-    int tempSensor;     // sensor temperature (fahrenheit times 10)
-    bool validTemp;
-    int ldr;
+    int16_t tempRTC;
+    uint8_t stat;
 
     rtcTime = myRTC.get();
 
     { /*---- (1) READ SENSORS ----*/
-        tempRTC = myRTC.temperature() * 9 / 2 + 320;
+        tempRTC = myRTC.temperature() * 9 / 2 + 320;    // °F * 10
         digitalWrite(SENSOR_POWER, HIGH);
-        validTemp = readDS18B20(&tempSensor);
-        ldr = analogRead(LDR);
+        // read other sensors here
         digitalWrite(SENSOR_POWER, LOW);
     }
 
     { /*---- (2) SAVE SENSOR DATA ----*/
         LOGDATA.fields.timestamp = rtcTime;
         LOGDATA.fields.tempRTC = tempRTC;
-        LOGDATA.fields.tempDS = tempSensor;
-        LOGDATA.fields.ldr = ldr;
         LOGDATA.fields.vBat = vccBattery;
         LOGDATA.fields.vReg = vccRegulator;
     }
@@ -277,7 +270,7 @@ void logSensorData()
         STATE = POWER_DOWN;
         return;
     }
-    else if (stat == EEPROM_ADDR_ERR) {
+    else if (stat == JC_EEPROM::EEPROM_ADDR_ERR) {
         Serial << F("EEPROM ADDRESS ERROR") << endl;
         STATE = POWER_DOWN;
         return;
@@ -291,8 +284,6 @@ void logSensorData()
     { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
         printTime(rtcTime); printDate(rtcTime);
         Serial << F(", ") << tempRTC << F(", ");
-        if (validTemp) Serial << tempSensor << F(", ");
-        Serial << ldr << F(", ");
         Serial << vccBattery << F(", ") << vccRegulator << endl;
     }
 

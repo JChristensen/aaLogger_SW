@@ -8,9 +8,9 @@
 
 #include "logData.h"
 
-// instantiate the logData and extEEPROM objects
+// instantiate the logData and JC_EEPROM objects
 logData LOGDATA( EEPROM_KBITS * NBR_EEPROM / 8, WRAP_MODE );
-extEEPROM EEEP( EEPROM_KBITS, NBR_EEPROM, EEPROM_PAGE );
+JC_EEPROM EEEP( EEPROM_KBITS, NBR_EEPROM, EEPROM_PAGE );
 
 // the constructor specifies the total EEPROM capacity (all devices
 // combined) in kB, and whether wrap mode is enabled (wrap mode
@@ -19,7 +19,7 @@ extEEPROM EEEP( EEPROM_KBITS, NBR_EEPROM, EEPROM_PAGE );
 //
 // Whenever the EEPROM size or wrap mode is changed an INITIALIZE
 // is required before logging can begin.
-logData::logData(unsigned long eepromCapacity, bool wrapMode)
+logData::logData(uint32_t eepromCapacity, bool wrapMode)
 {
     _eepromCap = eepromCapacity * 1024UL;
     _maxRec = _eepromCap / _recSize;
@@ -71,10 +71,10 @@ bool logData::readNext()
 // write a log record into the next eeprom slot.
 // returns zero if successful,
 // returns EEPROM_ADDR_ERR if eeprom is full and wrap mode is off,
-// returns status from Wire library or extEEPROM library if other errors occur.
-byte logData::write()
+// returns status from Wire library or JC_EEPROM library if other errors occur.
+uint8_t logData::write()
 {
-    byte stat;
+    uint8_t stat;
 
     if (_wrapMode) {
         if (_nRec > 0) {    // writing the first record is a special case, don't need to move pointers
@@ -119,8 +119,8 @@ byte logData::write()
 // comment (1) will need modification.
 void logData::download(Timezone *tz)
 {
-    unsigned long ms, msLast;
-    unsigned long nRec = 0;
+    uint32_t ms, msLast;
+    uint32_t nRec {0};
     bool ledState;
     TimeChangeRule *tcr;    // pointer to the time change rule, use to get TZ abbrev
 
@@ -135,8 +135,6 @@ void logData::download(Timezone *tz)
                 print8601((*tz).toLocal(LOGDATA.fields.timestamp, &tcr));
                 Serial << tcr -> abbrev << ',';
                 Serial << _DEC(LOGDATA.fields.tempRTC) << ',';
-                Serial << _DEC(LOGDATA.fields.tempDS) << ',';
-                Serial << _DEC(LOGDATA.fields.ldr) << ',';
                 Serial << _DEC(LOGDATA.fields.vBat) << ',';
                 Serial << _DEC(LOGDATA.fields.vReg) << endl;
             }
@@ -179,7 +177,7 @@ void logData::writeLogStatus(bool writeConfig)
 // if not in wrap mode and eeprom is full, returns false, else true.
 bool logData::readLogStatus(bool printStatus)
 {
-    unsigned long pctAvail;
+    uint32_t pctAvail;
 
     myRTC.readRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
     _firstAddr = logStatus.firstAddr;
@@ -231,7 +229,7 @@ void logData::print8601(time_t t)
 // Print an integer in "00" format (with leading zero),
 // followed by a delimiter character to Serial.
 // Input value assumed to be between 0 and 99.
-void logData::printI00(int val, char delim)
+void logData::printI00(int16_t val, char delim)
 {
     if (val < 10) Serial << '0';
     Serial << _DEC(val);
