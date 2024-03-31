@@ -10,9 +10,9 @@
 #ifndef AALOGGER_CONFIG_H_INCLUDED
 #define AALOGGER_CONFIG_H_INCLUDED
 
-constexpr time_t LOG_INTERVAL {60}; // logging interval in seconds, must be > 0
-constexpr bool WRAP_MODE {false};   // true to overwrite oldest data once EEPROM is full,
-                                    // false to stop logging when EEPROM full
+constexpr time_t LOG_INTERVAL {60};     // logging interval in seconds, must be > 0
+constexpr bool WRAP_MODE {false};       // true to overwrite oldest data once EEPROM is full,
+                                        // false to stop logging when EEPROM full
 
 // size of one EEPROM in kilobits
 constexpr JC_EEPROM::eeprom_size_t EEPROM_KBITS {JC_EEPROM::kbits_2048};

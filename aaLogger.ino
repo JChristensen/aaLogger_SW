@@ -115,7 +115,8 @@ void loop()
                 STATE = SET_TIME;
                 digitalWrite(RED_LED, LOW);
                 digitalWrite(GRN_LED, grnLedState = HIGH);
-                Serial << endl << F("Enter Unix Epoch Time (UTC), e.g. from http://www.epochconverter.com/") << endl;
+                Serial << F("\nEnter UTC as yy,m,d,h,m,s, (24-hr clock)\n");
+                Serial.setTimeout(10000);
                 while (btnDownload.isPressed()) btnDownload.read();
                 msStateTime = ms;
             }
@@ -212,17 +213,27 @@ void loop()
             break;
 
         case SET_TIME:
-            if (Serial.available() >= 10) {
-                utc = Serial.parseInt();
+            // check for input to set the RTC, minimum length is 12, i.e. yy,m,d,h,m,s
+            if (Serial.available() >= 12) {
+                tmElements_t tm;
+                int y = Serial.parseInt();
+                tm.Year = y2kYearToTm(y);    //tmElements_t Year member is an offset from 1970
+                tm.Month = Serial.parseInt();
+                tm.Day = Serial.parseInt();
+                tm.Hour = Serial.parseInt();
+                tm.Minute = Serial.parseInt();
+                tm.Second = Serial.parseInt();
+                utc = makeTime(tm);
                 setTime(utc);
                 myRTC.set(utc);
-                const uint8_t RTC_STATUS(0x0F);     // DS3232 status register
-                myRTC.writeRTC(RTC_STATUS, 0x00);   // clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
+                // clear the status register (OSF, BB32KHZ, EN32KHZ are on by default)
+                myRTC.writeRTC(DS3232RTC::DS32_STATUS, 0x00);
                 local = myTZ.toLocal(utc, &tcr);
                 while (Serial.read() >= 0);
                 Serial << endl << F("Time set to: ") << endl;
                 printDateTime(utc, "UTC");
                 printDateTime(local, tcr -> abbrev);
+                while (Serial.available() > 0) Serial.read();   // dump any extraneous input
                 STATE = ENTER_COMMAND;
             }
             else if (ms - msStateTime >= STATE_TIMEOUT * 1000UL){
