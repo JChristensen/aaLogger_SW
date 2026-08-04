@@ -1,6 +1,6 @@
 // Double-A DataLogger: A low-power Arduino-based data logger.
 // https://github.com/JChristensen/aaLogger_SW
-// Copyright (C) 2013-2024 by Jack Christensen and licensed under
+// Copyright (C) 2013-2026 by Jack Christensen and licensed under
 // GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
 
 // This basic logging sketch logs the date/time, the temperature from
@@ -41,7 +41,8 @@ int16_t vccBattery, vccRegulator;   // battery and regulator voltages, read in s
 uint8_t nLogBlink;                  // counter for blinking LED when logging a record
 
 // states for the state machine
-enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN, DOWNLOAD, SET_TIME} STATE;
+enum STATES {ENTER_COMMAND, COMMAND, INITIALIZE, LOGGING, POWER_DOWN,
+             DOWNLOAD, SET, SET_TIME, SET_INTERVAL} STATE;
 
 void setup()
 {
@@ -63,9 +64,9 @@ void setup()
         INPUT_PULLUP,   // 12   [MISO] unused
         INPUT_PULLUP,   // 13   [SCK] unused
         INPUT_PULLUP,   // A0   unused
-        INPUT,          // A1   voltage input
-        INPUT,          // A2   voltage input
-        INPUT,          // A3   voltage input
+        INPUT_PULLUP,   // A1   unused
+        INPUT_PULLUP,   // A2   unused
+        INPUT_PULLUP,   // A3   unused
         INPUT,          // A4   [SDA] external pullup on board
         INPUT           // A5   [SCL] external pullup on board
     };
@@ -79,13 +80,13 @@ void setup()
     digitalWrite(SENSOR_POWER, LOW);    // sensor power off
     setSystemClock(CLOCK_8MHZ);
     Serial.begin(BAUD_RATE);
+    Serial << F("\nDouble-A Data Logger\nCompiled " __DATE__ " " __TIME__ "\n");
+    Serial << F(__FILE__ "\n");
 
     myRTC.begin();
     rtcTime = myRTC.get();
     localTime = myTZ.toLocal(rtcTime, &tcr);
-    Serial << F("\nDouble-A Data Logger\nCompiled " __DATE__ " " __TIME__ "\n");
-    Serial << F(__FILE__ "\n");
-    printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr -> abbrev);
+    printDateTime(rtcTime, "UTC"); printDateTime(localTime, tcr->abbrev);
     LOGDATA.configChanged(true);
     STATE = ENTER_COMMAND;
     EEEP.begin(JC_EEPROM::twiClock400kHz);
@@ -112,11 +113,11 @@ void loop()
             btnDownload.read();
             btnStart.read();
             if (btnDownload.pressedFor(LONG_PRESS)) {
-                STATE = SET_TIME;
+                STATE = SET;
                 digitalWrite(RED_LED, LOW);
                 digitalWrite(GRN_LED, grnLedState = HIGH);
-                Serial << F("\nEnter UTC as yy,m,d,h,m,s, (24-hr clock)\n");
                 Serial.setTimeout(10000);
+                Serial << F("\nSet time or logging interval or exit? [T|t|L|l|cr]\n");
                 while (btnDownload.isPressed()) btnDownload.read();
                 msStateTime = ms;
             }
@@ -147,7 +148,7 @@ void loop()
 
                 // calculate the first alarm
                 rtcTime = myRTC.get();
-                alarmTime = rtcTime + (LOG_INTERVAL) - rtcTime % (LOG_INTERVAL);
+                alarmTime = rtcTime + (LOGDATA.getLogInterval()) - rtcTime % (LOGDATA.getLogInterval());
 
                 // set RTC alarm to match on hours, minutes, seconds
                 myRTC.setAlarm(DS3232RTC::ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
@@ -209,6 +210,40 @@ void loop()
 
         case DOWNLOAD:
             LOGDATA.download(&myTZ);
+            STATE = ENTER_COMMAND;
+            break;
+        
+        case SET:
+            char buf[4];
+            Serial.readBytes(buf, 1);
+            if (buf[0] == 'T' or buf[0] == 't') {
+                STATE = SET_TIME;
+                while (Serial.available() > 0) Serial.read();   // dump any extraneous input
+                Serial << F("\nEnter UTC time (24-hr clock) as yy,m,d,h,m,s,\n");
+            }
+            else if (buf[0] == 'L' or buf[0] == 'l') {
+                STATE = SET_INTERVAL;
+                while (Serial.available() > 0) Serial.read();   // dump any extraneous input
+                Serial << F("\nEnter logging interval in seconds:\n");
+            }
+            else {
+                STATE = ENTER_COMMAND;
+                while (Serial.available() > 0) Serial.read();   // dump any extraneous input
+                Serial << F("Set canceled.\n");
+            }                
+            break;
+            
+        case SET_INTERVAL:
+            {
+                int32_t logInt = Serial.parseInt();
+                if (logInt > 0) {
+                    LOGDATA.putLogInterval(logInt);
+                    LOGDATA.readLogStatus(true);
+                }
+                else {
+                    Serial << F("Log interval not set, must be > 0.\n");
+                }
+            }
             STATE = ENTER_COMMAND;
             break;
 
@@ -299,7 +334,7 @@ void logSensorData()
     }
 
     // calculate and set the next alarm
-    alarmTime = rtcTime + (LOG_INTERVAL);
+    alarmTime = rtcTime + (LOGDATA.getLogInterval());
     myRTC.setAlarm(DS3232RTC::ALM1_MATCH_HOURS, second(alarmTime), minute(alarmTime), hour(alarmTime), 0);
     myRTC.alarm(DS3232RTC::ALARM_1);    // clear RTC interrupt flag
 

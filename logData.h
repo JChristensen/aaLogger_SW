@@ -1,6 +1,6 @@
 // Double-A DataLogger: A low-power Arduino-based data logger.
 // https://github.com/JChristensen/aaLogger_SW
-// Copyright (C) 2013-2024 by Jack Christensen and licensed under
+// Copyright (C) 2013-2026 by Jack Christensen and licensed under
 // GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
 
 // logData.h - A class to define the log data structure and
@@ -29,6 +29,8 @@ class logData
         void download(Timezone *tz);
         bool readLogStatus(bool printStatus);
         bool configChanged(bool printStatus);
+        time_t getLogInterval() {return _logInterval;}
+        void putLogInterval(time_t interval);
 
         union {
             logData_t fields;
@@ -42,16 +44,18 @@ class logData
         void print8601(time_t t);
         void printI00(int16_t val, char delim);
 
-        uint32_t _firstAddr;       // pointer to the oldest record in EEPROM
-        uint32_t _lastAddr;        // pointer to the newest record in EEPROM
-        uint32_t _nRec;            // number of records stored in EEPROM
-        uint32_t _eepromCap;       // EEPROM capacity in bytes (total for all EEPROM devices combined)
-        uint32_t _maxRec;          // maximum number of records that will fit in EEPROM
-        uint32_t _topAddr;              // pointer to the last EEPROM location that can hold a whole record
-        static const uint8_t _recSize = sizeof(logData_t);  // size of log record in bytes
+        uint32_t _firstAddr;        // pointer to the oldest record in EEPROM
+        uint32_t _lastAddr;         // pointer to the newest record in EEPROM
+        uint32_t _nRec;             // number of records stored in EEPROM
+        uint32_t _eepromCap;        // EEPROM capacity in bytes (total for all EEPROM devices combined)
+        uint32_t _maxRec;           // maximum number of records that will fit in EEPROM
+        uint32_t _topAddr;          // pointer to the last EEPROM location that can hold a whole record
+        time_t _logInterval{0};     // logging interval in seconds
+        static const uint8_t _recSize{sizeof(logData_t)};  // size of log record in bytes
         bool _wrapMode;             // true: continue logging when EEPROM is full, next record replacing the oldest
                                     // false: logging stops when EEPROM is full
         uint32_t _readAddr;         // pointer to read records
+        static constexpr time_t DEFAULT_INTERVAL {60}; // default logging interval in seconds, must be > 0
 
         union {                     // logging status data persisted in RTC SRAM (battery-backed)
             struct {
@@ -63,8 +67,10 @@ class logData
                 uint32_t topAddr;
                 uint8_t recSize;
                 bool wrapMode;
+                time_t logInterval;
+                uint32_t signature; // used to detect invalid logging status data
             };
-            uint8_t bytes[26];
+            uint8_t bytes[34];
         } logStatus;
 };
 

@@ -1,6 +1,6 @@
 // Double-A DataLogger: A low-power Arduino-based data logger.
 // https://github.com/JChristensen/aaLogger_SW
-// Copyright (C) 2013-2024 by Jack Christensen and licensed under
+// Copyright (C) 2013-2026 by Jack Christensen and licensed under
 // GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
 
 // config.h -- user-definable parameters
@@ -10,7 +10,6 @@
 #ifndef AALOGGER_CONFIG_H_INCLUDED
 #define AALOGGER_CONFIG_H_INCLUDED
 
-constexpr time_t LOG_INTERVAL {60};     // logging interval in seconds, must be > 0
 constexpr bool WRAP_MODE {false};       // true to overwrite oldest data once EEPROM is full,
                                         // false to stop logging when EEPROM full
 

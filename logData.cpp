@@ -1,6 +1,6 @@
 // Double-A DataLogger: A low-power Arduino-based data logger.
 // https://github.com/JChristensen/aaLogger_SW
-// Copyright (C) 2013-2024 by Jack Christensen and licensed under
+// Copyright (C) 2013-2026 by Jack Christensen and licensed under
 // GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
 
 // logData.cpp - A class to define the log data structure and
@@ -117,7 +117,7 @@ uint8_t logData::write()
 // pass a pointer to a local time zone object to allow timestamps to be output in local time.
 // when changing the log data structure, the code block below with
 // comment (1) will need modification.
-void logData::download(Timezone *tz)
+void logData::download(Timezone* tz)
 {
     uint32_t ms, msLast;
     uint32_t nRec {0};
@@ -138,7 +138,6 @@ void logData::download(Timezone *tz)
                 Serial << _DEC(LOGDATA.fields.vBat) << ',';
                 Serial << _DEC(LOGDATA.fields.vReg) << endl;
             }
-
 
             ms = millis();      // flash LEDs while downloading data
             if (ms - msLast > BLIP_ON) {
@@ -170,6 +169,8 @@ void logData::writeLogStatus(bool writeConfig)
     logStatus.firstAddr = _firstAddr;       // current status
     logStatus.lastAddr = _lastAddr;
     logStatus.nRec = _nRec;
+    logStatus.logInterval = _logInterval;
+    logStatus.signature = 0xaa55aa55;
     myRTC.writeRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
 }
 
@@ -183,6 +184,12 @@ bool logData::readLogStatus(bool printStatus)
     _firstAddr = logStatus.firstAddr;
     _lastAddr = logStatus.lastAddr;
     _nRec = logStatus.nRec;
+    _logInterval = logStatus.logInterval;
+    if (logStatus.signature != 0xaa55aa55) {
+        _logInterval = logStatus.logInterval = DEFAULT_INTERVAL;
+        logStatus.signature = 0xaa55aa55;
+        initialize();
+    }
     if (printStatus) {
         pctAvail = _nRec * 10000UL / _maxRec;
         pctAvail = (10000UL - pctAvail + 5 ) / 10;
@@ -190,9 +197,9 @@ bool logData::readLogStatus(bool printStatus)
         Serial << _DEC(_nRec) << F(" Record") << (_nRec==1 ? "" : "s") << F(" logged, ");
         Serial << _DEC(pctAvail / 10) << '.' << (pctAvail % 10) << F("% Available.") << endl;
         Serial << F("Log interval ");
-        printI00(hour(LOG_INTERVAL), ':');
-        printI00(minute(LOG_INTERVAL), ':');
-        printI00(second(LOG_INTERVAL), ',');
+        printI00(hour(_logInterval), ':');
+        printI00(minute(_logInterval), ':');
+        printI00(second(_logInterval), ',');
         Serial << F(" Record size ") << _DEC(_recSize) << F(" bytes, ");
         if (!_wrapMode) Serial << F("NO-");
         Serial << F("WRAP mode.") << endl;
@@ -201,6 +208,13 @@ bool logData::readLogStatus(bool printStatus)
         return false;
     else
         return true;
+}
+
+void logData::putLogInterval(time_t interval)
+{
+    logStatus.logInterval = interval;
+    _logInterval = interval;
+    writeLogStatus(false);
 }
 
 // check the current configuration against that read from RTC SRAM, return true if different.

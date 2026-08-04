@@ -1,6 +1,6 @@
 // Double-A DataLogger: A low-power Arduino-based data logger.
 // https://github.com/JChristensen/aaLogger_SW
-// Copyright (C) 2013-2024 by Jack Christensen and licensed under
+// Copyright (C) 2013-2026 by Jack Christensen and licensed under
 // GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
 
 // ds18b20.ino - Functions for a DS18B20 temperature sensor.
