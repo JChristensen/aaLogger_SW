@@ -38,7 +38,6 @@ constexpr uint8_t CLOCK_8MHZ {0};   // CLKPS[3:0] value for divide by 1
 constexpr uint8_t CLOCK_1MHZ {3};   // CLKPS[3:0] value for divide by 8
 
 // other
-constexpr int32_t BAUD_RATE {57600};        // speed for serial interface, must be <= 57600 with 8MHz system clock
-constexpr uint8_t RTC_RAM_STATUS {0x14};    // address in the RTC SRAM to keep log status
+constexpr int32_t BAUD_RATE {57600};    // speed for serial interface, must be <= 57600 with 8MHz system clock
 
 #endif

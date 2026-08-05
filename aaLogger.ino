@@ -80,6 +80,7 @@ void setup()
     digitalWrite(SENSOR_POWER, LOW);    // sensor power off
     setSystemClock(CLOCK_8MHZ);
     Serial.begin(BAUD_RATE);
+    delay(1000);
     Serial << F("\nDouble-A Data Logger\nCompiled " __DATE__ " " __TIME__ "\n");
     Serial << F(__FILE__ "\n");
 

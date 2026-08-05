@@ -50,7 +50,7 @@ class logData
         uint32_t _eepromCap;        // EEPROM capacity in bytes (total for all EEPROM devices combined)
         uint32_t _maxRec;           // maximum number of records that will fit in EEPROM
         uint32_t _topAddr;          // pointer to the last EEPROM location that can hold a whole record
-        time_t _logInterval{0};     // logging interval in seconds
+        time_t _logInterval;        // logging interval in seconds
         static const uint8_t _recSize{sizeof(logData_t)};  // size of log record in bytes
         bool _wrapMode;             // true: continue logging when EEPROM is full, next record replacing the oldest
                                     // false: logging stops when EEPROM is full
@@ -68,10 +68,13 @@ class logData
                 uint8_t recSize;
                 bool wrapMode;
                 time_t logInterval;
-                uint32_t signature; // used to detect invalid logging status data
             };
-            uint8_t bytes[34];
+            uint8_t bytes[30];
         } logStatus;
+        uint32_t _signature; // used to detect invalid logging status data
+        const uint8_t RTC_RAM_STATUS {0x14};        // RTC SRAM address for log status
+        const uint8_t RTC_INIT_SIGNATURE {0x40};    // RTC SRAM address for initialization signature
+        const uint32_t INITIALIZED {0xaa55aa55};    // value to indicate log data initialized
 };
 
 extern logData LOGDATA;

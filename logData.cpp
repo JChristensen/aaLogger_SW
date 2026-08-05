@@ -33,6 +33,8 @@ void logData::initialize()
     _firstAddr = 0;
     _lastAddr = 0;
     _nRec = 0;
+    _signature = INITIALIZED;
+    myRTC.writeRTC(RTC_INIT_SIGNATURE, reinterpret_cast<uint8_t*>(&_signature), sizeof(_signature));
     writeLogStatus(true);   // include log config parameters
 }
 
@@ -170,7 +172,6 @@ void logData::writeLogStatus(bool writeConfig)
     logStatus.lastAddr = _lastAddr;
     logStatus.nRec = _nRec;
     logStatus.logInterval = _logInterval;
-    logStatus.signature = 0xaa55aa55;
     myRTC.writeRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
 }
 
@@ -181,13 +182,14 @@ bool logData::readLogStatus(bool printStatus)
     uint32_t pctAvail;
 
     myRTC.readRTC(RTC_RAM_STATUS, logStatus.bytes, sizeof(logStatus));
+    myRTC.readRTC(RTC_INIT_SIGNATURE, reinterpret_cast<uint8_t*>(&_signature), sizeof(_signature));
     _firstAddr = logStatus.firstAddr;
     _lastAddr = logStatus.lastAddr;
     _nRec = logStatus.nRec;
     _logInterval = logStatus.logInterval;
-    if (logStatus.signature != 0xaa55aa55) {
+    if (_signature != INITIALIZED) {
         _logInterval = logStatus.logInterval = DEFAULT_INTERVAL;
-        logStatus.signature = 0xaa55aa55;
+        _signature = INITIALIZED;
         initialize();
     }
     if (printStatus) {
