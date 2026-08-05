@@ -3,8 +3,8 @@
 // Copyright (C) 2013-2026 by Jack Christensen and licensed under
 // GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
 
-// This basic logging sketch logs the date/time, the temperature from
-// the DS3232 sensor, the battery and regulator voltages.
+// Sketch to log date/time, DS3232 temperature, DS18B20 temperature,
+// light level from CdS photocell, battery and regulator voltages.
 
 #include <avr/sleep.h>
 #include <avr/wdt.h>
@@ -60,10 +60,10 @@ void setup()
         OUTPUT,         // 8    green LED
         OUTPUT,         // 9    sensor power enable
         INPUT_PULLUP,   // 10   [SS] unused
-        INPUT_PULLUP,   // 11   [MOSI] unused
+        INPUT,          // 11   [MOSI] ds18b20, external pullup on board
         INPUT_PULLUP,   // 12   [MISO] unused
         INPUT_PULLUP,   // 13   [SCK] unused
-        INPUT_PULLUP,   // A0   unused
+        INPUT_PULLUP,   // A0   CdS sensor
         INPUT_PULLUP,   // A1   unused
         INPUT_PULLUP,   // A2   unused
         INPUT_PULLUP,   // A3   unused
@@ -294,19 +294,25 @@ void logSensorData()
     time_t rtcTime, alarmTime;
     int16_t tempRTC;
     uint8_t stat;
+    bool validTemp;
+    int16_t tempSensor;
+    int16_t ldr;
 
     rtcTime = myRTC.get();
 
     { /*---- (1) READ SENSORS ----*/
         tempRTC = myRTC.temperature() * 9 / 2 + 320;    // °F * 10
         digitalWrite(SENSOR_POWER, HIGH);
-        // read other sensors here
+        validTemp = readDS18B20(&tempSensor);
+        ldr = analogRead(LDR);
         digitalWrite(SENSOR_POWER, LOW);
     }
 
     { /*---- (2) SAVE SENSOR DATA ----*/
         LOGDATA.fields.timestamp = rtcTime;
         LOGDATA.fields.tempRTC = tempRTC;
+        LOGDATA.fields.tempDS = tempSensor;
+        LOGDATA.fields.ldr = ldr;
         LOGDATA.fields.vBat = vccBattery;
         LOGDATA.fields.vReg = vccRegulator;
     }
@@ -331,6 +337,8 @@ void logSensorData()
     { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
         printTime(rtcTime); printDate(rtcTime);
         Serial << F(", ") << tempRTC << F(", ");
+        if (validTemp) Serial << tempSensor << F(", ");
+        Serial << ldr << F(", ");
         Serial << vccBattery << F(", ") << vccRegulator << endl;
     }
 

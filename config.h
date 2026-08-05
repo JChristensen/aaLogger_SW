@@ -33,12 +33,14 @@ constexpr uint16_t EEPROM_PAGE {256};   // EEPROM page size in BYTES
 struct logData_t {
     uint32_t timestamp;
     int16_t tempRTC;
+    int16_t tempDS;
+    int16_t ldr;
     int16_t vBat;
     int16_t vReg;
     int16_t RFU;    // make the log record a multiple of 4 bytes
 };
 
 // this line defines the field names and is printed at the beginning of the data when downloading
-#define CSV_HEADER "utc,local,tz,tempRTC,vBat,vReg"
+#define CSV_HEADER "utc,local,tz,tempRTC,tempDS,ldr,vBat,vReg"
 
 #endif
