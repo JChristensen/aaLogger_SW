@@ -19,8 +19,11 @@ constexpr uint8_t NBR_EEPROM {2};       // NUMBER of EEPROM devices on the I2C b
 constexpr uint16_t EEPROM_PAGE {256};   // EEPROM page size in BYTES
 
 // The struct below defines the log data. When modifying the struct,
-// also change the logData::download() function in logData.cpp and the
-// logSensorData() function in the main module accordingly.
+// also change:
+// (1) the logData::download() function in logData.cpp
+// (2) the logSensorData() function in the main module
+// (3) the pin configuration in the main module to properly set pin modes
+// (4) the CSV_HEADER string below
 //
 // When using M24M02 EEPROMs, the size of the struct should be a
 // multiple of four bytes if at all possible. This will minimize the
