@@ -3,8 +3,8 @@
 // Copyright (C) 2013-2026 by Jack Christensen and licensed under
 // GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
 
-// This basic logging sketch logs the date/time, the temperature from
-// the DS3232 sensor, the battery and regulator voltages.
+// Sketch to log date/time, DS3232 temperature, voltages from
+// the A1, A2, A3 pins, and the battery and regulator voltages.
 
 #include <avr/sleep.h>
 #include <avr/wdt.h>
@@ -64,9 +64,9 @@ void setup()
         INPUT_PULLUP,   // 12   [MISO] unused
         INPUT_PULLUP,   // 13   [SCK] unused
         INPUT_PULLUP,   // A0   unused
-        INPUT_PULLUP,   // A1   unused
-        INPUT_PULLUP,   // A2   unused
-        INPUT_PULLUP,   // A3   unused
+        INPUT,          // A1   v1
+        INPUT,          // A2   v2
+        INPUT,          // A3   v3
         INPUT,          // A4   [SDA] external pullup on board
         INPUT           // A5   [SCL] external pullup on board
     };
@@ -294,13 +294,19 @@ void logSensorData()
     time_t rtcTime, alarmTime;
     int16_t tempRTC;
     uint8_t stat;
+    int16_t v1, v2, v3;
 
     rtcTime = myRTC.get();
 
     { /*---- (1) READ SENSORS ----*/
         tempRTC = myRTC.temperature() * 9 / 2 + 320;    // °F * 10
         digitalWrite(SENSOR_POWER, HIGH);
-        // read other sensors here
+        v1 = analogRead(A1);
+        v2 = analogRead(A2);
+        v3 = analogRead(A3);
+        v1 = analogRead(A1);
+        v2 = analogRead(A2);
+        v3 = analogRead(A3);
         digitalWrite(SENSOR_POWER, LOW);
     }
 
@@ -309,6 +315,9 @@ void logSensorData()
         LOGDATA.fields.tempRTC = tempRTC;
         LOGDATA.fields.vBat = vccBattery;
         LOGDATA.fields.vReg = vccRegulator;
+        LOGDATA.fields.v1 = v1;
+        LOGDATA.fields.v2 = v2;
+        LOGDATA.fields.v3 = v3;
     }
 
     stat = LOGDATA.write();
@@ -331,7 +340,10 @@ void logSensorData()
     { /*---- (3) PRINT DATA TO SERIAL MONITOR ----*/
         printTime(rtcTime); printDate(rtcTime);
         Serial << F(", ") << tempRTC << F(", ");
-        Serial << vccBattery << F(", ") << vccRegulator << endl;
+        Serial << vccBattery << F(", ") << vccRegulator << F(", ")
+               << (long)v1 * vccRegulator / 1024 << F(", ")
+               << (long)v2 * vccRegulator / 1024 << F(", ")
+               << (long)v3 * vccRegulator / 1024 << endl;
     }
 
     // calculate and set the next alarm
