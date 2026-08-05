@@ -80,7 +80,7 @@ void setup()
     digitalWrite(SENSOR_POWER, LOW);    // sensor power off
     setSystemClock(CLOCK_8MHZ);
     Serial.begin(BAUD_RATE);
-    delay(1000);
+    delay(100);
     Serial << F("\nDouble-A Data Logger\nCompiled " __DATE__ " " __TIME__ "\n");
     Serial << F(__FILE__ "\n");
 
@@ -105,6 +105,7 @@ void loop()
     {
         case ENTER_COMMAND:         // transition state before entering the COMMAND state
             msStateTime = ms;       // record the time command mode started
+            msLast = ms;
             digitalWrite(RED_LED, redLedState = HIGH);
             digitalWrite(GRN_LED, LOW);
             STATE = COMMAND;
@@ -213,27 +214,25 @@ void loop()
             LOGDATA.download(&myTZ);
             STATE = ENTER_COMMAND;
             break;
-        
+
         case SET:
             char buf[4];
             Serial.readBytes(buf, 1);
             if (buf[0] == 'T' or buf[0] == 't') {
                 STATE = SET_TIME;
-                while (Serial.available() > 0) Serial.read();   // dump any extraneous input
                 Serial << F("\nEnter UTC time (24-hr clock) as yy,m,d,h,m,s,\n");
             }
             else if (buf[0] == 'L' or buf[0] == 'l') {
                 STATE = SET_INTERVAL;
-                while (Serial.available() > 0) Serial.read();   // dump any extraneous input
                 Serial << F("\nEnter logging interval in seconds:\n");
             }
             else {
                 STATE = ENTER_COMMAND;
-                while (Serial.available() > 0) Serial.read();   // dump any extraneous input
                 Serial << F("Set canceled.\n");
-            }                
+            }
+            while (Serial.available() > 0) Serial.read();   // dump any extraneous input
             break;
-            
+
         case SET_INTERVAL:
             {
                 int32_t logInt = Serial.parseInt();
@@ -245,6 +244,7 @@ void loop()
                     Serial << F("Log interval not set, must be > 0.\n");
                 }
             }
+            while (Serial.available() > 0) Serial.read();   // dump any extraneous input
             STATE = ENTER_COMMAND;
             break;
 
